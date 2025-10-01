@@ -8,10 +8,10 @@ interface DashboardLayoutProps {
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen min-w-screen">
       <SidebarProvider>
         <AppSidebar />
-        <main className="flex-1 p-8 bg-gray-50">
+        <main className="flex-1 w-full p-8 bg-gray-50">
             <SidebarTrigger />
           {children}
         </main>

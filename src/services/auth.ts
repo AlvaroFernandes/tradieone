@@ -1,3 +1,7 @@
+export function logout() {
+  localStorage.removeItem('token');
+  window.location.href = '/signin';
+}
 export function isLoggedIn(): boolean {
   return Boolean(localStorage.getItem('token'));
 }
