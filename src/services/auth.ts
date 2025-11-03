@@ -22,6 +22,15 @@ export async function login({ email, password }: { email: string; password: stri
   return response.data;
 }
 
+export async function requestPasswordReset(email: string) {
+  // Sends a password reset request to the auth backend.
+  // If your backend uses a different endpoint or payload, update accordingly.
+  const response = await axios.post('https://authgen.azurewebsites.net/forgot', {
+    username: email,
+  });
+  return response.data;
+}
+
 export function rememberEmail(email: string) {
   localStorage.setItem('rememberedEmail', email);
 }
