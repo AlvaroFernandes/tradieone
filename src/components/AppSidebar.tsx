@@ -20,7 +20,7 @@ const AppSidebar = () => {
  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
  const [currentPage, setCurrentPage] = useState<page>("home");
  const [projectsExpanded, setProjectsExpanded] = useState(false);
- const [selectedProject, setSelectedProject] = useState<string | null>(null); // Placeholder for selected project state
+ const [selectedProject] = useState<string | null>(null); // Placeholder for selected project state
 
   return (
     // sidebar container
