@@ -19,16 +19,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm' # ✅ caches node_modules between builds
+          cache: 'npm' # ✅ caches node_modules for faster builds
 
       - name: 📦 Install dependencies
         run: npm ci
 
-      # Optional quality check — uncomment if you use ESLint
+      # Optional quality checks
       # - name: 🔍 Lint code
       #   run: npm run lint
-
-      # Optional tests — uncomment if you have tests configured
+      #
       # - name: 🧪 Run tests
       #   run: npm test
 
@@ -51,12 +50,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist
-          path: dist # ✅ ensures correct folder for deployment
+          path: dist # ✅ ensures ./dist contains your static files
+
+      - name: 🗜️ Zip dist folder
+        run: |
+          cd dist
+          zip -r ../dist.zip .
+          cd ..
 
       - name: 🌐 Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'TradieOne'
           slot-name: 'Production'
-          package: ./dist
+          package: ./dist.zip
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_78DB2552E42F41508456D26D93E70E21 }}
