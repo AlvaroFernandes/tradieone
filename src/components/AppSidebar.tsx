@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -11,16 +12,16 @@ import {
 } from "lucide-react";
 import logo from '@/assets/logo.png';
 
-
-type page = "home" | "my-projects" | "view-project" | "jobs" | "clients" | "employees" | "contractors" | "timesheets";
-
-
-
 const AppSidebar = () => {
- const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
- const [currentPage, setCurrentPage] = useState<page>("home");
- const [projectsExpanded, setProjectsExpanded] = useState(false);
- const [selectedProject] = useState<string | null>(null); // Placeholder for selected project state
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [projectsExpanded, setProjectsExpanded] = useState(false);
+
+  // Helper function to determine if a path is active
+  const isActiveRoute = (path: string) => {
+    return location.pathname === path;
+  };
 
   return (
     // sidebar container
@@ -67,9 +68,9 @@ const AppSidebar = () => {
       <nav className="flex-1 px-4 overflow-y-auto">
         {/* Home */}
         <button
-          onClick={() => setCurrentPage("home")}
+          onClick={() => navigate("/dashboard")}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
-            currentPage === "home"
+            isActiveRoute("/dashboard")
               ? "bg-[#334155] text-white"
               : "text-gray-400 hover:bg-[#334155] hover:text-white"
           }`}
@@ -82,13 +83,13 @@ const AppSidebar = () => {
         <div className="mb-1">
           <button
             onClick={() => {
-              setCurrentPage("my-projects");
+              navigate("/dashboard/projects");
               if (!sidebarCollapsed) {
                 setProjectsExpanded(!projectsExpanded);
               }
             }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              currentPage === "my-projects" || currentPage === "view-project"
+              isActiveRoute("/dashboard/projects") || location.pathname.startsWith("/dashboard/project/")
                 ? "bg-[#334155] text-white"
                 : "text-gray-400 hover:bg-[#334155] hover:text-white"
             }`}
@@ -111,9 +112,9 @@ const AppSidebar = () => {
           {!sidebarCollapsed && projectsExpanded && (
             <div className="ml-4 mt-1 space-y-1">
               <button
-                onClick={() => setCurrentPage("my-projects")}
+                onClick={() => navigate("/dashboard/projects")}
                 className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                  currentPage === "my-projects"
+                  isActiveRoute("/dashboard/projects")
                     ? "bg-[#334155] text-white"
                     : "text-gray-400 hover:bg-[#334155] hover:text-white"
                 }`}
@@ -121,32 +122,14 @@ const AppSidebar = () => {
                 <div className="w-1.5 h-1.5 rounded-full bg-current"></div>
                 <span>My Projects</span>
               </button>
-              <button
-                onClick={() => {
-                  if (selectedProject) {
-                    setCurrentPage("view-project");
-                  } else {
-                    setCurrentPage("my-projects");
-                  }
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                  currentPage === "view-project"
-                    ? "bg-[#334155] text-white"
-                    : "text-gray-400 hover:bg-[#334155] hover:text-white"
-                }`}
-                disabled={!selectedProject}
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-current"></div>
-                <span>View Project</span>
-              </button>
             </div>
           )}
         </div>
         {/* Other Menu Items */}
         <button
-          onClick={() => setCurrentPage("jobs")}
+          onClick={() => navigate("/dashboard/jobs")}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
-            currentPage === "jobs"
+            isActiveRoute("/dashboard/jobs")
               ? "bg-[#334155] text-white"
               : "text-gray-400 hover:bg-[#334155] hover:text-white"
           }`}
@@ -157,9 +140,9 @@ const AppSidebar = () => {
         </button>
 
         <button
-          onClick={() => setCurrentPage("clients")}
+          onClick={() => navigate("/dashboard/clients")}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
-            currentPage === "clients"
+            isActiveRoute("/dashboard/clients")
               ? "bg-[#334155] text-white"
               : "text-gray-400 hover:bg-[#334155] hover:text-white"
           }`}
@@ -170,9 +153,9 @@ const AppSidebar = () => {
         </button>
 
         <button
-          onClick={() => setCurrentPage("employees")}
+          onClick={() => navigate("/dashboard/employees")}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
-            currentPage === "employees"
+            isActiveRoute("/dashboard/employees")
               ? "bg-[#334155] text-white"
               : "text-gray-400 hover:bg-[#334155] hover:text-white"
           }`}
@@ -183,9 +166,9 @@ const AppSidebar = () => {
         </button>
 
         <button
-          onClick={() => setCurrentPage("contractors")}
+          onClick={() => navigate("/dashboard/contractors")}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
-            currentPage === "contractors"
+            isActiveRoute("/dashboard/contractors")
               ? "bg-[#334155] text-white"
               : "text-gray-400 hover:bg-[#334155] hover:text-white"
           }`}
@@ -196,9 +179,9 @@ const AppSidebar = () => {
         </button>
 
         <button
-          onClick={() => setCurrentPage("timesheets")}
+          onClick={() => navigate("/dashboard/timesheets")}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
-            currentPage === "timesheets"
+            isActiveRoute("/dashboard/timesheets")
               ? "bg-[#334155] text-white"
               : "text-gray-400 hover:bg-[#334155] hover:text-white"
           }`}
