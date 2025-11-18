@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { AUTH_ENDPOINTS } from '@/config/auth';
 
 /**
  * Log out the current user.
@@ -13,7 +14,7 @@ export async function logout(): Promise<void> {
       // If your backend supports a logout endpoint to invalidate the token,
       // you can uncomment and update the request below. Keep it best-effort
       // so logout never fails client-side.
-      // await axios.post('https://authgen.azurewebsites.net/logout', {}, {
+      // await axios.post(AUTH_ENDPOINTS.logout, {}, {
       //   headers: { Authorization: `Bearer ${token}` }
       // });
     }
@@ -33,7 +34,7 @@ export function isLoggedIn(): boolean {
 }
 
 export async function register({ email, password }: { email: string; password: string }) {
-  const response = await axios.post('https://authgen.azurewebsites.net/signup', {
+  const response = await axios.post(AUTH_ENDPOINTS.signup, {
     username: email,
     password,
   });
@@ -41,7 +42,7 @@ export async function register({ email, password }: { email: string; password: s
 }
 
 export async function login({ email, password }: { email: string; password: string }) {
-  const response = await axios.post('https://authgen.azurewebsites.net/login', {
+  const response = await axios.post(AUTH_ENDPOINTS.login, {
     username: email,
     password,
   });
@@ -51,7 +52,7 @@ export async function login({ email, password }: { email: string; password: stri
 export async function requestPasswordReset(email: string) {
   // Sends a password reset request to the auth backend.
   // If your backend uses a different endpoint or payload, update accordingly.
-  const response = await axios.post('https://authgen.azurewebsites.net/forgot', {
+  const response = await axios.post(AUTH_ENDPOINTS.forgotPassword, {
     username: email,
   });
   return response.data;
