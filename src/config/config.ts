@@ -2,13 +2,20 @@
  * Central configuration file for API endpoints and application settings
  */
 
-// Base API URL
-export const API_BASE_URL = 'https://authgen.azurewebsites.net';
+import { addUserInfo } from "@/services/UserService";
+
+// Base API URL for non-auth backend (tdo server)
+export const API_BASE_URL = 'https://tdoserver.azurewebsites.net';
 
 // API Endpoints
 export const API_ENDPOINTS = {
+  users: {
+    profile: `${API_BASE_URL}/api/UserProfile`,
+    addUserInfo: `${API_BASE_URL}/api/UserProfile`,
+    updateProfile: `${API_BASE_URL}/api/UserProfile`,
+  },
   clients: {
-    list: `${API_BASE_URL}/clients`,
+    list: `${API_BASE_URL}/clients/GetList`,
     clientDetail: (id: string) => `${API_BASE_URL}/clients/${id}`,
     addClient: `${API_BASE_URL}/clients`,
     updateClient: (id: string) => `${API_BASE_URL}/clients/${id}`,

@@ -13,6 +13,7 @@ import EmployeesPage from '../pages/EmployeesPage';
 import ContractorsPage from '../pages/ContractorsPage';
 import TimesheetsPage from '../pages/TimesheetsPage';
 import DashboardLayout from '../layouts/DashboardLayout';
+import UserProfilePage from '../pages/UserProfile';
 
 const routes = [
   {
@@ -105,6 +106,16 @@ const routes = [
       <RequireAuth>
         <DashboardLayout>
           <TimesheetsPage />
+        </DashboardLayout>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/dashboard/profile',
+    element: (
+      <RequireAuth>
+        <DashboardLayout>
+          <UserProfilePage />
         </DashboardLayout>
       </RequireAuth>
     ),
