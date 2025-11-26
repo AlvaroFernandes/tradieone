@@ -1,6 +1,8 @@
 import React from "react";
 
 import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
   FormField,
@@ -24,17 +26,22 @@ const states = [
   "Australian Capital Territory",
 ];
 
-type ClientFormValues = {
-  clientName: string;
-  contactPerson: string;
-  email: string;
-  phone: string;
-  address1: string;
-  address2: string;
-  city: string;
-  state: string;
-  postcode: string;
-};
+const clientFormSchema = z.object({
+  clientName: z.string().min(1, "Client name is required"),
+  contactPerson: z.string().min(1, "Contact person is required"),
+  email: z.email("Invalid email address"),
+  phone: z
+    .string()
+    .min(6, "Phone must be at least 6 characters")
+    .max(20, "Phone too long"),
+  address1: z.string().min(1, "Address is required"),
+  address2: z.string().optional().or(z.literal("")),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  postcode: z.string().min(3, "Postcode is required"),
+});
+
+type ClientFormValues = z.infer<typeof clientFormSchema>;
 
 const defaultValues: ClientFormValues = {
   clientName: "",
@@ -49,6 +56,7 @@ const defaultValues: ClientFormValues = {
 };
 
 import { createClient, updateClient } from "@/services/ClientsService";
+import type { Client } from "@/services/ClientsService";
 
 interface ClientFormProps {
   onCancel?: () => void;
@@ -58,21 +66,32 @@ interface ClientFormProps {
 }
 
 const ClientForm: React.FC<ClientFormProps> = ({ onCancel, type = "add", clientId, initialValues }) => {
-  const form = useForm<ClientFormValues>({ defaultValues: defaultValues });
+  const form = useForm<ClientFormValues>({
+    resolver: zodResolver(clientFormSchema),
+    defaultValues: defaultValues,
+  });
+
+  const { reset } = form;
 
   // Populate fields if editing and initialValues are provided
   React.useEffect(() => {
     if (type === "edit" && initialValues) {
-      form.reset({ ...defaultValues, ...initialValues });
+      reset({ ...defaultValues, ...initialValues });
     }
-  }, [type, initialValues]);
+  }, [type, initialValues, reset]);
 
   async function onSubmit(values: ClientFormValues) {
     try {
+      // Ensure optional fields match the API shape (address2 should be string)
+      const payload: Client = {
+        ...values,
+        address2: values.address2 ?? "",
+      } as unknown as Client;
+
       if (type === "edit" && clientId) {
-        await updateClient(clientId, values);
+        await updateClient(clientId, payload);
       } else {
-        await createClient(values);
+        await createClient(payload);
       }
       form.reset();
       if (onCancel) onCancel();
