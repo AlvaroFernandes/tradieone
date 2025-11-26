@@ -2,7 +2,6 @@
  * Central configuration file for API endpoints and application settings
  */
 
-import { addUserInfo } from "@/services/UserService";
 
 // Base API URL for non-auth backend (tdo server)
 export const API_BASE_URL = 'https://tdoserver.azurewebsites.net';

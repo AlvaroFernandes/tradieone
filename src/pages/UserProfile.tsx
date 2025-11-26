@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { getProfile, updateProfile, UserProfile } from '@/services/UserService';
+import { getProfile, updateProfile } from '@/services/UserService';
+import type { UserProfile } from '@/services/UserService';
 
 const UserProfilePage = () => {
   const [profile, setProfile] = useState<UserProfile>({});

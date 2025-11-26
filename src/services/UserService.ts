@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from '@/lib/apiClient';
 import { API_ENDPOINTS } from '@/config/config';
 
 export interface UserProfile {
@@ -10,28 +10,12 @@ export interface UserProfile {
   company?: string;
 }
 
-function authHeaders() {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
-}
-
 export async function getProfile(): Promise<UserProfile> {
-  const response = await axios.get(API_ENDPOINTS.users.profile, {
-    headers: authHeaders(),
-  });
+  const response = await apiClient.get(API_ENDPOINTS.users.profile);
   return response.data;
 }
 
 export async function updateProfile(data: Partial<UserProfile>): Promise<UserProfile> {
-  const response = await axios.put(API_ENDPOINTS.users.updateProfile, data, {
-    headers: authHeaders(),
-  });
+  const response = await apiClient.put(API_ENDPOINTS.users.updateProfile, data);
   return response.data;
-}
-
-export async function addUserInfo(data: Partial<UserProfile>): Promise<UserProfile> {
-    const response = await axios.post(API_ENDPOINTS.users.addUserInfo, data, {
-      headers: authHeaders(),
-    });
-    return response.data;
 }

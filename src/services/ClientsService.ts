@@ -1,4 +1,4 @@
-import axios from "axios";
+import apiClient from '@/lib/apiClient';
 import { API_ENDPOINTS } from '@/config/config';
 
 export interface Client {
@@ -15,27 +15,27 @@ export interface Client {
 }
 
 export async function getClients() {
-  const response = await axios.get(API_ENDPOINTS.clients.list);
+  const response = await apiClient.get(API_ENDPOINTS.clients.list);
   return response.data;
 }
 
 export async function getClientById(id: string | number) {
-  const response = await axios.get(API_ENDPOINTS.clients.clientDetail(String(id)));
+  const response = await apiClient.get(API_ENDPOINTS.clients.clientDetail(String(id)));
   return response.data;
 }
 
 export async function createClient(data: Client) {
-  const response = await axios.post(API_ENDPOINTS.clients.addClient, data);
+  const response = await apiClient.post(API_ENDPOINTS.clients.addClient, data);
   return response.data;
 }
 
 export async function updateClient(id: string | number, data: Client) {
-  const response = await axios.put(API_ENDPOINTS.clients.updateClient(String(id)), data);
+  const response = await apiClient.put(API_ENDPOINTS.clients.updateClient(String(id)), data);
   return response.data;
 }
 
 export async function deleteClient(id: string | number) {
-  const response = await axios.delete(API_ENDPOINTS.clients.deleteClient(String(id)));
+  const response = await apiClient.delete(API_ENDPOINTS.clients.deleteClient(String(id)));
   return response.data;
 }
 
