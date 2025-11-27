@@ -8,16 +8,28 @@ import { Skeleton } from '../components/ui/skeleton';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login, rememberEmail, forgetRememberedEmail, getRememberedEmail } from '../services/auth';
+import { useForm, Controller } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 
 const SignIn = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(false);
   const [userType, setUserType] = useState<'admin' | 'employee'>('admin');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [pageLoading, setPageLoading] = useState(true);
+
+  const signInSchema = z.object({
+    email: z.string().email('Please enter a valid email'),
+    password: z.string().min(1, 'Password is required'),
+    remember: z.boolean().optional(),
+  });
+
+  type SignInForm = z.infer<typeof signInSchema>;
+
+  const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useForm<SignInForm>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: { email: '', password: '', remember: false },
+  });
 
   const navigate = useNavigate();
 
@@ -25,8 +37,8 @@ const SignIn = () => {
   useEffect(() => {
     const rememberedEmail = getRememberedEmail();
     if (rememberedEmail) {
-      setEmail(rememberedEmail);
-      setRemember(true);
+      setValue('email', rememberedEmail);
+      setValue('remember', true);
     }
     if (localStorage.getItem('token')) {
       // If user already has a token, redirect immediately
@@ -39,21 +51,19 @@ const SignIn = () => {
   }, [navigate]);
 
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-  setLoading(true);
-  setError('');
-  setSuccess('');
+  const onSubmit = async (values: SignInForm) => {
+    setLoading(true);
+    // messages use sonner toasts
     try {
-      const data = await login({ email, password });
-  setSuccess('Sign in successful!');
+      const data = await login({ email: values.email, password: values.password });
+      toast.success('Sign in successful!');
       localStorage.setItem('token', data.token);
-      if (remember) {
-        rememberEmail(email);
+      if (values.remember) {
+        rememberEmail(values.email);
       } else {
         forgetRememberedEmail();
       }
-        navigate('/dashboard');
+      navigate('/dashboard');
     } catch (err: unknown) {
       interface ErrorResponse {
         response?: {
@@ -63,16 +73,10 @@ const SignIn = () => {
         };
       }
       const errorObj = err as ErrorResponse;
-      if (
-        errorObj &&
-        errorObj.response &&
-        errorObj.response.data &&
-        typeof errorObj.response.data.message === 'string'
-      ) {
-        setError(errorObj.response.data.message);
-      } else {
-        setError('Sign in failed');
-      }
+      const message = errorObj && errorObj.response && errorObj.response.data && typeof errorObj.response.data.message === 'string'
+        ? errorObj.response.data.message
+        : 'Sign in failed';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -149,7 +153,7 @@ const SignIn = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-5">
               <div>
                 <Label className="text-gray-700">Login As</Label>
@@ -195,11 +199,12 @@ const SignIn = () => {
                   id="email"
                   type="email"
                   placeholder="email@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   className="mt-2 h-11"
-                  required
+                  {...register('email')}
                 />
+                {errors.email ? (
+                  <div className="text-sm text-red-600 mt-1">{errors.email.message}</div>
+                ) : null}
               </div>
 
               <div>
@@ -210,19 +215,28 @@ const SignIn = () => {
                   id="password"
                   type="password"
                   placeholder="Enter Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   className="mt-2 h-11"
-                  required
+                  {...register('password')}
                 />
+                {errors.password ? (
+                  <div className="text-sm text-red-600 mt-1">{errors.password.message}</div>
+                ) : null}
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="remember"
-                    checked={remember}
-                    onCheckedChange={(v) => setRemember(Boolean(v))}
+                  <Controller
+                    control={control}
+                    name="remember"
+                    render={({ field }) => (
+                      <Checkbox
+                        id="remember"
+                        checked={Boolean(field.value)}
+                        onCheckedChange={(v) => {
+                          field.onChange(Boolean(v));
+                        }}
+                      />
+                    )}
                   />
                   <label
                     htmlFor="remember"
@@ -240,17 +254,14 @@ const SignIn = () => {
                 </button>
               </div>
 
-              {error && <div className="text-red-500 text-sm">{error}</div>}
-              {success && (
-                <div className="text-green-600 text-sm">{success}</div>
-              )}
+              {/* Messages are shown via sonner toasts */}
 
               <Button
                 type="submit"
                 className="w-full h-11 bg-blue-600 hover:bg-blue-700"
-                disabled={loading}
+                disabled={loading || isSubmitting}
               >
-                {loading ? "Signing in..." : "Sign In"}
+                {loading || isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>
             </div>
           </form>

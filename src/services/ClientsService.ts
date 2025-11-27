@@ -14,8 +14,21 @@ export interface Client {
   id?: string | number;
 }
 
-export async function getClients() {
-  const response = await apiClient.get(API_ENDPOINTS.clients.list);
+export interface GetClientsOptions {
+  pageNumber?: number;
+  pageSize?: number;
+  keyword?: string;
+}
+
+export async function getClients(options: GetClientsOptions = {}) {
+  const { pageNumber = 1, pageSize = 20, keyword = '' } = options;
+  const response = await apiClient.get(API_ENDPOINTS.clients.list, {
+    params: {
+      pageNumber,
+      pageSize,
+      keyword,
+    },
+  });
   return response.data;
 }
 

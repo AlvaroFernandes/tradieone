@@ -1,5 +1,6 @@
 import { Button } from '../components/ui/button';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import AuthLayout from '../layouts/AuthLayout';
 import { Skeleton } from '../components/ui/skeleton';
 import { register } from '../services/auth';
@@ -7,23 +8,36 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { useNavigate } from 'react-router-dom';
-
-
-
+import { useForm, Controller } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 const Register = () => {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  
   const [pageLoading, setPageLoading] = useState(true);
   const navigate = useNavigate();
+
+  const registerSchema = z
+    .object({
+      firstName: z.string().min(1, 'First name is required'),
+      lastName: z.string().min(1, 'Last name is required'),
+      email: z.string().email('Invalid email'),
+      password: z.string().min(6, 'Password must be at least 6 characters'),
+      confirmPassword: z.string().min(6, 'Please confirm your password'),
+      terms: z.boolean().refine((v) => v === true, { message: 'You must accept the terms' }),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      path: ['confirmPassword'],
+      message: "Passwords don't match",
+    });
+
+  type RegisterForm = z.infer<typeof registerSchema>;
+
+  const { register: formRegister, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<RegisterForm>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { firstName: '', lastName: '', email: '', password: '', confirmPassword: '', terms: false },
+  });
 
   useEffect(() => {
     if (localStorage.getItem('token')) {
@@ -33,20 +47,12 @@ const Register = () => {
     setPageLoading(false);
   }, [navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: RegisterForm) => {
     setLoading(true);
-    setError('');
-    setSuccess('');
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
+    // messages are handled via sonner toasts
     try {
-      await register({ email: formData.email, password: formData.password });
-      setSuccess('Registration successful!');
-      // Redirect or show success message
+      await register({ email: values.email, password: values.password });
+      toast.success('Registration successful!');
     } catch (err: unknown) {
       interface ErrorResponse {
         response?: {
@@ -56,16 +62,10 @@ const Register = () => {
         };
       }
       const errorObj = err as ErrorResponse;
-      if (
-        errorObj &&
-        errorObj.response &&
-        errorObj.response.data &&
-        typeof errorObj.response.data.message === 'string'
-      ) {
-        setError(errorObj.response.data.message);
-      } else {
-        setError('Registration failed');
-      }
+      const message = errorObj && errorObj.response && errorObj.response.data && typeof errorObj.response.data.message === 'string'
+        ? errorObj.response.data.message
+        : 'Registration failed';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -98,8 +98,7 @@ const Register = () => {
           </p>
         </div>
 
-        {error && <div className="text-red-500 text-sm mb-3">{error}</div>}
-        {success && <div className="text-green-600 text-sm mb-3">{success}</div>}
+        {/* Notifications are shown via sonner toasts */}
 
         <Button
           variant="outline"
@@ -136,7 +135,7 @@ const Register = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -145,11 +144,11 @@ const Register = () => {
                   id="firstName"
                   type="text"
                   placeholder="John"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   className="mt-2 h-11"
+                  {...formRegister('firstName')}
                   required
                 />
+                {errors.firstName ? (<div className="text-sm text-red-600 mt-1">{errors.firstName.message}</div>) : null}
               </div>
               <div>
                 <Label htmlFor="lastName" className="text-gray-700">Last Name</Label>
@@ -157,11 +156,11 @@ const Register = () => {
                   id="lastName"
                   type="text"
                   placeholder="Doe"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   className="mt-2 h-11"
+                  {...formRegister('lastName')}
                   required
                 />
+                {errors.lastName ? (<div className="text-sm text-red-600 mt-1">{errors.lastName.message}</div>) : null}
               </div>
             </div>
 
@@ -171,11 +170,11 @@ const Register = () => {
                 id="email"
                 type="email"
                 placeholder="email@company.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="mt-2 h-11"
+                {...formRegister('email')}
                 required
               />
+              {errors.email ? (<div className="text-sm text-red-600 mt-1">{errors.email.message}</div>) : null}
             </div>
 
             <div>
@@ -184,11 +183,11 @@ const Register = () => {
                 id="password"
                 type="password"
                 placeholder="Enter Password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="mt-2 h-11"
+                {...formRegister('password')}
                 required
               />
+              {errors.password ? (<div className="text-sm text-red-600 mt-1">{errors.password.message}</div>) : null}
             </div>
 
             <div>
@@ -197,15 +196,21 @@ const Register = () => {
                 id="confirmPassword"
                 type="password"
                 placeholder="Confirm Password"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 className="mt-2 h-11"
+                {...formRegister('confirmPassword')}
                 required
               />
+              {errors.confirmPassword ? (<div className="text-sm text-red-600 mt-1">{errors.confirmPassword.message}</div>) : null}
             </div>
 
             <div className="flex items-center space-x-2">
-              <Checkbox id="terms" required />
+              <Controller
+                control={control}
+                name="terms"
+                render={({ field }) => (
+                  <Checkbox id="terms" checked={Boolean(field.value)} onCheckedChange={(v) => field.onChange(Boolean(v))} />
+                )}
+              />
               <label
                 htmlFor="terms"
                 className="text-sm cursor-pointer text-gray-700"
@@ -215,12 +220,13 @@ const Register = () => {
                   Terms and Conditions
                 </a>
               </label>
+              {errors.terms ? (<div className="text-sm text-red-600 mt-1">{errors.terms.message}</div>) : null}
             </div>
 
             <Button
               type="submit"
               className="w-full h-11 bg-blue-600 hover:bg-blue-700"
-              disabled={loading}
+              disabled={loading || isSubmitting}
             >
               {loading ? 'Signing up...' : 'Sign Up'}
             </Button>

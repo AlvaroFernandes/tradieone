@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { getProfile, updateProfile } from '@/services/UserService';
@@ -15,6 +16,7 @@ const UserProfilePage = () => {
         setProfile(data);
       } catch (err) {
         console.error('Failed to load profile', err);
+        toast.error('Failed to load profile');
       }
     })();
   }, []);
@@ -27,9 +29,10 @@ const UserProfilePage = () => {
     setSaving(true);
     try {
       await updateProfile(profile);
-      // optional: show success toast
+      toast.success('Profile saved');
     } catch (err) {
       console.error('Failed to save profile', err);
+      toast.error('Failed to save profile');
     } finally {
       setSaving(false);
     }

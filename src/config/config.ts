@@ -14,13 +14,13 @@ export const API_ENDPOINTS = {
     updateProfile: `${API_BASE_URL}/api/UserProfile`,
   },
   clients: {
-    list: `${API_BASE_URL}/clients/GetList`,
-    clientDetail: (id: string) => `${API_BASE_URL}/clients/${id}`,
-    addClient: `${API_BASE_URL}/clients`,
-    updateClient: (id: string) => `${API_BASE_URL}/clients/${id}`,
-    deleteClient: (id: string) => `${API_BASE_URL}/clients/${id}`,
-    
-  }
+    // List endpoint expects query params: pageNumber, pageSize, keyword
+    list: `${API_BASE_URL}/api/Clients/GetList`,
+    clientDetail: (id: string) => `${API_BASE_URL}/api/Clients/${id}`,
+    addClient: `${API_BASE_URL}/api/Clients`,
+    updateClient: (id: string) => `${API_BASE_URL}/api/Clients/${id}`,
+    deleteClient: (id: string) => `${API_BASE_URL}/api/Clients/${id}`,
+  },
   // Add more endpoint groups as needed
   // projects: {
   //   list: `${API_BASE_URL}/projects`,

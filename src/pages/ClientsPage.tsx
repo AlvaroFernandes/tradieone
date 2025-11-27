@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import StatsCards from "@/components/StatsCards";
 import ModalComponent from "@/components/ModalComponent";
 import ClientForm from "@/components/ClientForm";
@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { getClients } from '@/services/ClientsService';
 import { Table, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -33,91 +34,53 @@ type ClientTableRow = {
   totalJobs: number;
 };
 
-const mockClients: ClientTableRow[] = [
-  {
-    clientName: "Acme Corp",
-    contactPerson: "John Doe",
-    email: "john@acme.com",
-    phone: "0412 345 678",
-    location: "Sydney, NSW",
-    activeProjects: 3,
-    totalJobs: 12,
-  },
-  {
-    clientName: "Beta Ltd",
-    contactPerson: "Jane Smith",
-    email: "jane@beta.com",
-    phone: "0412 987 654",
-    location: "Melbourne, VIC",
-    activeProjects: 1,
-    totalJobs: 5,
-  },
-  {
-    clientName: "Gamma Pty",
-    contactPerson: "Alice Brown",
-    email: "alice@gamma.com",
-    phone: "0412 111 222",
-    location: "Brisbane, QLD",
-    activeProjects: 2,
-    totalJobs: 8,
-  },
-];
+// Client data is loaded from the API; removed local dummy data
 
-const tableColumns = [
-  { key: "clientName", label: "Client" },
-  { key: "contactPerson", label: "Contact Person" },
-  { key: "email", label: "Email" },
-  { key: "phone", label: "Phone" },
-  { key: "location", label: "Location" },
-  { key: "activeProjects", label: "Active Projects" },
-  { key: "totalJobs", label: "Total Jobs" },
-];
+// tableColumns removed (not used) — table columns are defined directly in JSX
 
 const ClientsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerms, setSearchTerms] = useState("");
-  const [sortKey, setSortKey] = useState<keyof ClientTableRow>("clientName");
-  const [sortAsc, setSortAsc] = useState<boolean>(true);
-  // Add missing state for dropdown menu actions
-  const [selectedClient, setSelectedClient] = useState<ClientTableRow | null>(null);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  // (Dropdown action handlers / modals can be implemented later)
+  // Clients loaded from API
+  const [clients, setClients] = useState<ClientTableRow[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  function handleSort(key: keyof ClientTableRow) {
-    if (sortKey === key) {
-      setSortAsc((asc) => !asc);
-    } else {
-      setSortKey(key);
-      setSortAsc(true);
-    }
-  }
+  useEffect(() => {
+    let mounted = true;
+    const timer = setTimeout(() => {
+      (async () => {
+        setLoading(true);
+        try {
+          const res = await getClients({ pageNumber: 1, pageSize: 50, keyword: searchTerms });
+          const items = Array.isArray(res) ? res : res?.items ?? [];
+          if (!mounted) return;
+          setClients(items);
+        } catch (err) {
+          console.error("Failed to load clients", err);
+        } finally {
+          if (mounted) setLoading(false);
+        }
+      })();
+    }, 300);
 
-  // Filter and sort clients
-  const filteredClients = mockClients
-    .filter((client) => {
-      const term = searchTerms.toLowerCase();
-      return (
-        client.clientName.toLowerCase().includes(term) ||
-        client.contactPerson.toLowerCase().includes(term) ||
-        client.email.toLowerCase().includes(term) ||
-        client.phone.toLowerCase().includes(term) ||
-        client.location.toLowerCase().includes(term)
-      );
-    })
-    .sort((a, b) => {
-      const aVal = a[sortKey];
-      const bVal = b[sortKey];
-      if (typeof aVal === "string" && typeof bVal === "string") {
-        return sortAsc
-          ? aVal.localeCompare(bVal)
-          : bVal.localeCompare(aVal);
-      }
-      if (typeof aVal === "number" && typeof bVal === "number") {
-        return sortAsc ? aVal - bVal : bVal - aVal;
-      }
-      return 0;
-    });
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
+  }, [searchTerms]);
+
+  // Filter clients client-side as a fallback
+  const filteredClients = clients.filter((client) => {
+    const term = searchTerms.toLowerCase();
+    return (
+      client.clientName?.toLowerCase().includes(term) ||
+      client.contactPerson?.toLowerCase().includes(term) ||
+      client.email?.toLowerCase().includes(term) ||
+      client.phone?.toLowerCase().includes(term) ||
+      client.location?.toLowerCase().includes(term)
+    );
+  });
 
   function getInitials(clientName: string): import("react").ReactNode {
     if (!clientName) return "";
@@ -136,6 +99,67 @@ const ClientsPage = () => {
 
     return initials.toUpperCase();
   }
+  // Prepare table rows (loading / empty / data)
+  const tableRows = loading ? (
+    <TableRow>
+      <TableCell colSpan={8} className="text-center text-gray-500 py-6">Loading clients...</TableCell>
+    </TableRow>
+  ) : filteredClients.length === 0 ? (
+    <TableRow>
+      <TableCell colSpan={8} className="text-center text-gray-500 py-6">No clients found.</TableCell>
+    </TableRow>
+  ) : (
+    filteredClients.map((client, idx) => (
+      <TableRow key={idx} className="hover:bg-gray-50 cursor-pointer">
+        <TableCell>
+          <div className="flex items-center gap-3">
+            <Avatar className="w-10 h-10 bg-blue-600 text-white">
+              <AvatarFallback className="text-white bg-blue-600">
+                {getInitials(client.clientName)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-gray-900">{client.clientName}</span>
+          </div>
+        </TableCell>
+        <TableCell className="text-gray-600">{client.contactPerson}</TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Mail size={14} className="text-gray-400" /> {client.email}
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Phone size={14} className="text-gray-400" /> {client.phone}
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <MapPin size={14} className="text-gray-400" /> {client.location}
+          </div>
+        </TableCell>
+        <TableCell>
+          <Badge className={client.activeProjects > 0 ? "bg-green-50 text-green-700 border-0" : "bg-gray-100 text-gray-700 border-0"}>
+            {client.activeProjects}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-gray-600">{client.totalJobs}</TableCell>
+        <TableCell className="text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex items-center justify-center h-8 w-8 p-0 rounded-md hover:bg-accent hover:text-accent-foreground" onClick={(e) => e.stopPropagation()}>
+                <MoreVertical size={16} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* View details (implementation pending) */ }}>View Details</DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* Edit client (implementation pending) */ }}>Edit Client</DropdownMenuItem>
+              <DropdownMenuItem className="text-red-600" onClick={(e) => { e.stopPropagation(); /* Delete client (implementation pending) */ }}>Delete</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      </TableRow>
+    ))
+  );
   return (
     <div className="p-6 space-y-6">
       <StatsCards items={statsData} />
@@ -198,102 +222,7 @@ const ClientsPage = () => {
               </TableHead>
               {/* Table body */}
               <TableBody>
-                {filteredClients.map((client, idx) => (
-                  <TableRow
-                    key={idx}
-                    className="hover:bg-gray-50 cursor-pointer"
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10 bg-blue-600 text-white">
-                          <AvatarFallback className="text-white bg-blue-600">
-                            {getInitials(client.clientName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-gray-900">
-                          {client.clientName}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-gray-600">
-                      {client.contactPerson}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Mail size={14} className="text-gray-400" />{" "}
-                        {client.email}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Phone size={14} className="text-gray-400" />{" "}
-                        {client.phone}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin size={14} className="text-gray-400" />{" "}
-                        {client.location}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          client.activeProjects > 0
-                            ? "bg-green-50 text-green-700 border-0"
-                            : "bg-gray-100 text-gray-700 border-0"
-                        }
-                      >
-                        {client.activeProjects}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-gray-600">
-                      {client.totalJobs}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            className="inline-flex items-center justify-center h-8 w-8 p-0 rounded-md hover:bg-accent hover:text-accent-foreground"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical size={16} />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedClient(client);
-                              setIsViewDialogOpen(true);
-                            }}
-                          >
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedClient(client);
-                              setIsEditDialogOpen(true);
-                            }}
-                          >
-                            Edit Client
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedClient(client);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {tableRows}
               </TableBody>
             </Table>
           </div>

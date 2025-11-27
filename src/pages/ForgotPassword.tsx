@@ -8,48 +8,52 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { requestPasswordReset, getRememberedEmail } from '../services/auth';
 import { ArrowLeft } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState('');
 
   const navigate = useNavigate();
 
-  const onBackToLogin = () => navigate('/signin');
+  const forgotSchema = z.object({
+    email: z.string().email('Please enter a valid email'),
+  });
+
+  type ForgotForm = z.infer<typeof forgotSchema>;
+
+  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<ForgotForm>({
+    resolver: zodResolver(forgotSchema),
+    defaultValues: { email: '' },
+  });
 
   useEffect(() => {
     const remembered = getRememberedEmail();
-    if (remembered) setEmail(remembered);
+    if (remembered) setValue('email', remembered);
     // If already logged in, redirect
     if (localStorage.getItem('token')) {
       navigate('/dashboard');
       return;
     }
     setPageLoading(false);
-  }, [navigate]);
+  }, [navigate, setValue]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onBackToLogin = () => navigate('/signin');
+
+  const onSubmit = async (values: ForgotForm) => {
     setLoading(true);
-    setError('');
-    setSuccess('');
+    setSubmittedEmail(values.email);
     try {
-      await requestPasswordReset(email);
-      setSuccess('If that email exists we sent password reset instructions.');
-    } catch (err: unknown) {
-      // Try to extract server message
-      interface ErrorResponse {
-        response?: { data?: { message?: string } };
-      }
-      const errorObj = err as ErrorResponse;
-      if (errorObj && errorObj.response && errorObj.response.data && typeof errorObj.response.data.message === 'string') {
-        setError(errorObj.response.data.message);
-      } else {
-        setError('Failed to request password reset.');
-      }
+      await requestPasswordReset(values.email);
+      toast.success('If that email exists we sent password reset instructions.');
+      setSuccess(true);
+    } catch {
+      toast.error('Failed to request password reset.');
     } finally {
       setLoading(false);
     }
@@ -61,6 +65,7 @@ const ForgotPassword = () => {
         <div className="flex items-center justify-center py-16 w-full">
           <div className="w-full max-w-md space-y-4">
             <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
           </div>
@@ -85,7 +90,7 @@ const ForgotPassword = () => {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} aria-busy={loading}>
+              <form onSubmit={handleSubmit(onSubmit)} aria-busy={loading}>
                 <div className="space-y-5">
                   <div>
                     <Label htmlFor="email" className="text-gray-700">
@@ -95,25 +100,19 @@ const ForgotPassword = () => {
                       id="email"
                       type="email"
                       placeholder="email@company.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
                       className="mt-2 h-11"
+                      {...register('email')}
                       required
                     />
+                    {errors.email ? (
+                      <div className="text-sm text-red-600 mt-1">{errors.email.message}</div>
+                    ) : null}
                   </div>
-
-                  {error ? (
-                    <div className="text-sm text-red-600">{error}</div>
-                  ) : null}
-
-                  {success ? (
-                    <div className="text-sm text-green-600">{success}</div>
-                  ) : null}
 
                   <Button
                     type="submit"
                     className="w-full h-11 bg-blue-600 hover:bg-blue-700"
-                    disabled={loading}
+                    disabled={loading || isSubmitting}
                   >
                     {loading ? 'Sending...' : 'Send Reset Link'}
                   </Button>
@@ -139,8 +138,8 @@ const ForgotPassword = () => {
               </div>
               <h2 className="text-2xl mb-2">Check your email</h2>
               <p className="text-sm text-gray-600 mb-6">
-                We&apos;ve sent password reset instructions to{" "}
-                <strong>{email}</strong>
+                We&apos;ve sent password reset instructions to{' '}
+                <strong>{submittedEmail}</strong>
               </p>
               <Button
                 onClick={onBackToLogin}
