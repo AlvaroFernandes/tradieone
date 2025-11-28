@@ -8,7 +8,7 @@ interface ModalComponentProps {
   children: React.ReactNode; // The form or any content
   description?: string;
   size?: "sm" | "md" | "lg" | "xl" | string;
-  type?: "add" | "edit";
+  type?: "add" | "edit" | "view" | "delete" | "";
 }
 
 const sizeMap: Record<string, string> = {
@@ -26,7 +26,7 @@ export function ModalComponent({ open, onOpenChange, title, site, children, desc
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {site && <div className="text-xs text-gray-500 mb-2">Site: {site}</div>}
-          {description && <DialogDescription>{description}</DialogDescription>}
+          <DialogDescription>{description || ""}</DialogDescription>
         </DialogHeader>
         {children}
       </DialogContent>

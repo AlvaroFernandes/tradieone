@@ -34,8 +34,8 @@ const clientFormSchema = z.object({
     .string()
     .min(6, "Phone must be at least 6 characters")
     .max(20, "Phone too long"),
-  address1: z.string().min(1, "Address is required"),
-  address2: z.string().optional().or(z.literal("")),
+  addressLine1: z.string().min(1, "Address is required"),
+  addressLine2: z.string().optional().or(z.literal("")),
   city: z.string().min(1, "City is required"),
   state: z.string().min(1, "State is required"),
   postcode: z.string().min(3, "Postcode is required"),
@@ -48,8 +48,8 @@ const defaultValues: ClientFormValues = {
   contactPerson: "",
   email: "",
   phone: "",
-  address1: "",
-  address2: "",
+  addressLine1: "",
+  addressLine2: "",
   city: "",
   state: "",
   postcode: "",
@@ -85,7 +85,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ onCancel, type = "add", clientI
       // Ensure optional fields match the API shape (address2 should be string)
       const payload: Client = {
         ...values,
-        address2: values.address2 ?? "",
+        addressLine2: values.addressLine2 ?? "",
       } as unknown as Client;
 
       if (type === "edit" && clientId) {
@@ -170,7 +170,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ onCancel, type = "add", clientI
         {/* Address Line 1 */}
         <FormField
           control={form.control}
-          name="address1"
+          name="addressLine1"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Address Line 1</FormLabel>
@@ -184,7 +184,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ onCancel, type = "add", clientI
         {/* Address Line 2 */}
         <FormField
           control={form.control}
-          name="address2"
+          name="addressLine2"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Address Line 2</FormLabel>

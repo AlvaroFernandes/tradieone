@@ -4,7 +4,7 @@ import ModalComponent from "@/components/ModalComponent";
 import ClientForm from "@/components/ClientForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Mail, MapPin, Phone, Search, MoreVertical } from "lucide-react";
+import { Mail, MapPin, Phone, Search, MoreVertical, Building2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -13,18 +13,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { getClients } from '@/services/ClientsService';
-import { Table, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-
-const statsData: { title: string; stats: number; style?: string; type?: "number" | "currency" }[] = [
-  { title: "Total Clients", stats: 42, type: "number"},
-  { title: "Active Projects", stats: 18, style: "text-green-700", type: "number" },
-  { title: "Total Revenue", stats: 1200000, style: "text-gray-700", type: "currency" },
-  { title: "New This Month", stats: 89000, style: "text-blue-700", type: "currency" },
-];
+import { Label } from "@/components/ui/label";
 
 type ClientTableRow = {
+  id?: string;
   clientName: string;
   contactPerson: string;
   email: string;
@@ -39,12 +34,18 @@ type ClientTableRow = {
 // tableColumns removed (not used) — table columns are defined directly in JSX
 
 const ClientsPage = () => {
+    // State for delete confirmation modal
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [clientToDelete, setClientToDelete] = useState<ClientTableRow | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerms, setSearchTerms] = useState("");
-  // (Dropdown action handlers / modals can be implemented later)
-  // Clients loaded from API
   const [clients, setClients] = useState<ClientTableRow[]>([]);
   const [loading, setLoading] = useState(false);
+  // Modal for viewing client details
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<ClientTableRow | null>(null);
+  // Modal for editing client from view modal
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -82,6 +83,14 @@ const ClientsPage = () => {
     );
   });
 
+  // Stats data, with dynamic total clients
+  const statsData = [
+    { title: "Total Clients", stats: filteredClients.length, type: "number" as const },
+    { title: "Active Projects", stats: 18, style: "text-green-700", type: "number" as const },
+    { title: "Total Revenue", stats: 1200000, style: "text-gray-700", type: "currency" as const },
+    { title: "New This Month", stats: 89000, style: "text-blue-700", type: "currency" as const },
+  ];
+
   function getInitials(clientName: string): import("react").ReactNode {
     if (!clientName) return "";
     const parts = clientName
@@ -110,7 +119,14 @@ const ClientsPage = () => {
     </TableRow>
   ) : (
     filteredClients.map((client, idx) => (
-      <TableRow key={idx} className="hover:bg-gray-50 cursor-pointer">
+      <TableRow
+        key={idx}
+        className="hover:bg-gray-50 cursor-pointer"
+        onClick={() => {
+          setSelectedClient(client);
+          setViewModalOpen(true);
+        }}
+      >
         <TableCell>
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10 bg-blue-600 text-white">
@@ -151,9 +167,13 @@ const ClientsPage = () => {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* View details (implementation pending) */ }}>View Details</DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* Edit client (implementation pending) */ }}>Edit Client</DropdownMenuItem>
-              <DropdownMenuItem className="text-red-600" onClick={(e) => { e.stopPropagation(); /* Delete client (implementation pending) */ }}>Delete</DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setViewModalOpen(true); }}>View Details</DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setEditModalOpen(true); }}>Edit Client</DropdownMenuItem>
+              <DropdownMenuItem className="text-red-600" onClick={(e) => {
+                e.stopPropagation();
+                setClientToDelete(client);
+                setDeleteModalOpen(true);
+              }}>Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </TableCell>
@@ -202,34 +222,161 @@ const ClientsPage = () => {
           </div>
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <Table className="border border-gray-200 rounded-lg overflow-hidden">
-              <TableHead>
+              <TableHeader>
                 <TableRow className="bg-gray-50 hover:bg-gray-100">
-                  <TableHead className="text-gray-700">Client</TableHead>
-                  <TableHead className="text-gray-700">
-                    Contact Person
-                  </TableHead>
-                  <TableHead className="text-gray-700">Email</TableHead>
-                  <TableHead className="text-gray-700">Phone</TableHead>
-                  <TableHead className="text-gray-700">Location</TableHead>
-                  <TableHead className="text-gray-700">
-                    Active Projects
-                  </TableHead>
-                  <TableHead className="text-gray-700">Total Jobs</TableHead>
-                  <TableHead className="text-gray-700 text-right">
-                    Actions
-                  </TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Contact Person</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Active Projects</TableHead>
+                  <TableHead>Total Jobs</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              </TableHead>
-              {/* Table body */}
-              <TableBody>
-                {tableRows}
-              </TableBody>
+              </TableHeader>
+              <TableBody>{tableRows}</TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal for viewing client details (custom layout) */}
+      <ModalComponent
+        open={viewModalOpen}
+        onOpenChange={setViewModalOpen}
+        title="Client Details"
+        description="View complete information about this client."
+        size="xl"
+        type="view"
+      >
+        {selectedClient && (
+          <div className="space-y-6 py-4">
+            <div className="flex items-center gap-4 pb-4 border-b">
+              <Avatar className="w-16 h-16">
+                <AvatarFallback className="bg-blue-600 text-white text-xl">
+                  {getInitials(selectedClient.clientName)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="text-xl text-gray-900">{selectedClient.clientName}</h3>
+                <p className="text-sm text-gray-500">{selectedClient.contactPerson}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Mail size={16} className="text-gray-400" />
+                  <Label className="text-gray-700">Email</Label>
+                </div>
+                <p className="text-gray-900">{selectedClient.email}</p>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Phone size={16} className="text-gray-400" />
+                  <Label className="text-gray-700">Phone</Label>
+                </div>
+                <p className="text-gray-900">{selectedClient.phone}</p>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin size={16} className="text-gray-400" />
+                  <Label className="text-gray-700">Location</Label>
+                </div>
+                <p className="text-gray-900">{selectedClient.location}</p>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 size={16} className="text-gray-400" />
+                  <Label className="text-gray-700">Contact Person</Label>
+                </div>
+                <p className="text-gray-900">{selectedClient.contactPerson}</p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <h4 className="text-sm text-gray-700 mb-4">Statistics</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-1">Active Projects</p>
+                  <p className="text-2xl text-green-700">{selectedClient.activeProjects}</p>
+                </div>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-1">Total Jobs</p>
+                  <p className="text-2xl text-blue-700">{selectedClient.totalJobs}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-4">
+              <Button variant="outline" onClick={() => setViewModalOpen(false)}>
+                Close
+              </Button>
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700" 
+                onClick={() => {
+                  setViewModalOpen(false);
+                  setEditModalOpen(true);
+                }}
+              >
+                Edit Client
+              </Button>
+            </div>
+          </div>
+        )}
+      </ModalComponent>
+
+      {/* Delete confirmation modal */}
+      <ModalComponent
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Delete Client"
+        description="Are you sure you want to delete this client? This action cannot be undone."
+        size="sm"
+        type="delete"
+      >
+        <div className="space-y-4 py-2">
+          <p className="text-gray-900">Client: <strong>{clientToDelete?.clientName}</strong></p>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={async () => {
+                if (clientToDelete?.id) {
+                  try {
+                    await import("@/services/ClientsService").then(({ deleteClient }) => deleteClient(clientToDelete.id!));
+                    setClients((prev) => prev.filter((c) => c.id !== clientToDelete.id));
+                  } catch (err) {
+                    // TODO: show error toast
+                    console.error("Failed to delete client", err);
+                  }
+                }
+                setDeleteModalOpen(false);
+                setClientToDelete(null);
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </ModalComponent>
+      <ModalComponent
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        title={selectedClient ? `Edit Client: ${selectedClient.clientName}` : "Edit Client"}
+        site="Clients"
+        size="lg"
+        type="edit"
+      >
+        {selectedClient && (
+          <ClientForm
+            initialValues={selectedClient}
+            onCancel={() => setEditModalOpen(false)}
+          />
+        )}
+      </ModalComponent>
     </div>
   );
 };
 
 export default ClientsPage;
+
