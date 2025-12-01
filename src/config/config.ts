@@ -18,7 +18,7 @@ export const API_ENDPOINTS = {
     list: `${API_BASE_URL}/api/Clients/GetList`,
     clientDetail: (id: string) => `${API_BASE_URL}/api/Clients/${id}`,
     addClient: `${API_BASE_URL}/api/Clients`,
-    updateClient: (id: string) => `${API_BASE_URL}/api/Clients/${id}`,
+    updateClient: `${API_BASE_URL}/api/Clients/`,
     deleteClient: (id: string) => `${API_BASE_URL}/api/Clients/id=${id}`,
   },
   // Add more endpoint groups as needed

@@ -26,6 +26,26 @@ const states = [
   "Australian Capital Territory",
 ];
 
+const stateMap: Record<string, string> = {
+  NSW: "New South Wales",
+  VIC: "Victoria",
+  QLD: "Queensland",
+  SA: "South Australia",
+  WA: "Western Australia",
+  TAS: "Tasmania",
+  NT: "Northern Territory",
+  ACT: "Australian Capital Territory",
+};
+
+function normalizeState(value?: string) {
+  if (!value) return value;
+  const up = value.toUpperCase();
+  if (stateMap[up]) return stateMap[up];
+  const found = states.find((s) => s.toLowerCase() === value.toLowerCase());
+  if (found) return found;
+  return value;
+}
+
 const clientFormSchema = z.object({
   clientName: z.string().min(1, "Client name is required"),
   contactPerson: z.string().min(1, "Contact person is required"),
@@ -76,7 +96,24 @@ const ClientForm: React.FC<ClientFormProps> = ({ onCancel, type = "add", clientI
   // Populate fields if editing and initialValues are provided
   React.useEffect(() => {
     if (type === "edit" && initialValues) {
-      reset({ ...defaultValues, ...initialValues });
+      console.log("ClientForm: initialValues received:", initialValues);
+      // Support both shapes: { address1, address2 } and { addressLine1, addressLine2 }
+      const iv = initialValues as Partial<ClientFormValues> & {
+        address1?: string;
+        address2?: string;
+        state?: string;
+      };
+
+      const mapped: Partial<ClientFormValues> = {
+        ...defaultValues,
+        ...initialValues,
+        addressLine1: iv.addressLine1 ?? iv.address1 ?? defaultValues.addressLine1,
+        addressLine2: iv.addressLine2 ?? iv.address2 ?? defaultValues.addressLine2,
+        state: normalizeState(iv.state ?? (initialValues as any).stateName),
+      };
+
+      console.log("ClientForm: mapped values:", mapped);
+      reset(mapped as ClientFormValues);
     }
   }, [type, initialValues, reset]);
 
@@ -89,7 +126,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ onCancel, type = "add", clientI
       } as unknown as Client;
 
       if (type === "edit" && clientId) {
-        await updateClient(clientId, payload);
+        await updateClient(payload);
       } else {
         await createClient(payload);
       }
@@ -187,7 +224,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ onCancel, type = "add", clientI
           name="addressLine2"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Address Line 2</FormLabel>
+              <FormLabel>Address Line 2 <span className="text-sm text-gray-400">(optional)</span></FormLabel>
               <FormControl>
                 <Input placeholder="Apartment, suite, etc." {...field} />
               </FormControl>
@@ -217,7 +254,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ onCancel, type = "add", clientI
               <FormItem>
                 <FormLabel>State</FormLabel>
                 <FormControl>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select state" />
                     </SelectTrigger>

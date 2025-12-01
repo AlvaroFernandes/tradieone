@@ -42,8 +42,8 @@ export async function createClient(data: Client) {
   return response.data;
 }
 
-export async function updateClient(id: string | number, data: Client) {
-  const response = await apiClient.put(API_ENDPOINTS.clients.updateClient(String(id)), data);
+export async function updateClient(data: Client) {
+  const response = await apiClient.put(API_ENDPOINTS.clients.updateClient, data);
   return response.data;
 }
 

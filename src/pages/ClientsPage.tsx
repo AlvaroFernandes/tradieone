@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import StatsCards from "@/components/StatsCards";
 import ModalComponent from "@/components/ModalComponent";
 import ClientForm from "@/components/ClientForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Mail, MapPin, Phone, Search, MoreVertical, Building2 } from "lucide-react";
+import { MapPin, Phone, Search, MoreVertical, Building2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getClients } from '@/services/ClientsService';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -24,7 +25,12 @@ type ClientTableRow = {
   contactPerson: string;
   email: string;
   phone: string;
-  location: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  country?: string;
+  postcode: string;
   activeProjects: number;
   totalJobs: number;
 };
@@ -41,6 +47,8 @@ const ClientsPage = () => {
   const [searchTerms, setSearchTerms] = useState("");
   const [clients, setClients] = useState<ClientTableRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const initialLoadRef = useRef(true);
   // Modal for viewing client details
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientTableRow | null>(null);
@@ -61,6 +69,10 @@ const ClientsPage = () => {
           console.error("Failed to load clients", err);
         } finally {
           if (mounted) setLoading(false);
+          if (initialLoadRef.current) {
+            initialLoadRef.current = false;
+            setPageLoading(false);
+          }
         }
       })();
     }, 300);
@@ -72,16 +84,25 @@ const ClientsPage = () => {
   }, [searchTerms]);
 
   // Filter clients client-side as a fallback
-  const filteredClients = clients.filter((client) => {
+    const filteredClients = clients.filter((client) => { 
     const term = searchTerms.toLowerCase();
     return (
       client.clientName?.toLowerCase().includes(term) ||
       client.contactPerson?.toLowerCase().includes(term) ||
       client.email?.toLowerCase().includes(term) ||
       client.phone?.toLowerCase().includes(term) ||
-      client.location?.toLowerCase().includes(term)
+      client.addressLine1?.toLowerCase().includes(term) ||
+      client.addressLine2?.toLowerCase().includes(term) ||
+      client.city?.toLowerCase().includes(term) ||
+      client.state?.toLowerCase().includes(term) ||
+      client.postcode?.toLowerCase().includes(term)
     );
   });
+
+    // Log filtered result once per filter update (not per item)
+      useEffect(() => {
+        console.log("Filtered clients count:", filteredClients.length);
+      }, [filteredClients.length]);
 
   // Stats data, with dynamic total clients
   const statsData = [
@@ -140,7 +161,7 @@ const ClientsPage = () => {
         <TableCell className="text-gray-600">{client.contactPerson}</TableCell>
         <TableCell>
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Mail size={14} className="text-gray-400" /> {client.email}
+            <MapPin size={14} className="text-gray-400" /> {client.city}, {client.state}
           </div>
         </TableCell>
         <TableCell>
@@ -150,7 +171,7 @@ const ClientsPage = () => {
         </TableCell>
         <TableCell>
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <MapPin size={14} className="text-gray-400" /> {client.location}
+            <MapPin size={14} className="text-gray-400" /> {client.city}, {client.state}
           </div>
         </TableCell>
         <TableCell>
@@ -180,6 +201,18 @@ const ClientsPage = () => {
       </TableRow>
     ))
   );
+  if (pageLoading) {
+    return (
+      <div className="p-6">
+        <div className="w-full max-w-4xl mx-auto space-y-4">
+          <Skeleton className="h-8 w-1/4" />
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <StatsCards items={statsData} />
@@ -200,7 +233,7 @@ const ClientsPage = () => {
               onOpenChange={setModalOpen}
               title="Add New Client"
               site="Clients"
-              size="lg"
+              size="w80"
               type="add"
             >
               <ClientForm onCancel={() => setModalOpen(false)} />
@@ -246,7 +279,7 @@ const ClientsPage = () => {
         onOpenChange={setViewModalOpen}
         title="Client Details"
         description="View complete information about this client."
-        size="xl"
+        size="w80"
         type="view"
       >
         {selectedClient && (
@@ -264,26 +297,38 @@ const ClientsPage = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-6">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Mail size={16} className="text-gray-400" />
-                  <Label className="text-gray-700">Email</Label>
-                </div>
-                <p className="text-gray-900">{selectedClient.email}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Phone size={16} className="text-gray-400" />
-                  <Label className="text-gray-700">Phone</Label>
-                </div>
-                <p className="text-gray-900">{selectedClient.phone}</p>
-              </div>
-              <div>
+              <div className="col-span-2">
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin size={16} className="text-gray-400" />
-                  <Label className="text-gray-700">Location</Label>
+                  <Label className="text-gray-700">Address</Label>
                 </div>
-                <p className="text-gray-900">{selectedClient.location}</p>
+                <p className="text-gray-900">
+                  {selectedClient.addressLine1}
+                  {selectedClient.addressLine2 && <>, {selectedClient.addressLine2}</>}
+                  <br />
+                  {selectedClient.city}, {selectedClient.state} {selectedClient.postcode}
+                  {selectedClient.country && <>, {selectedClient.country}</>}
+                </p>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 size={16} className="text-gray-400" />
+                  <Label className="text-gray-700">Contact Person</Label>
+                </div>
+                <p className="text-gray-900">{selectedClient.contactPerson}</p>
+              </div>
+              <div className="col-span-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin size={16} className="text-gray-400" />
+                  <Label className="text-gray-700">Address</Label>
+                </div>
+                <p className="text-gray-900">
+                  {selectedClient.addressLine1}
+                  {selectedClient.addressLine2 && <>, {selectedClient.addressLine2}</>}
+                  <br />
+                  {selectedClient.city}, {selectedClient.state} {selectedClient.postcode}
+                  {selectedClient.country && <>, {selectedClient.country}</>}
+                </p>
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -364,11 +409,13 @@ const ClientsPage = () => {
         onOpenChange={setEditModalOpen}
         title={selectedClient ? `Edit Client: ${selectedClient.clientName}` : "Edit Client"}
         site="Clients"
-        size="lg"
+        size="w80"
         type="edit"
       >
         {selectedClient && (
           <ClientForm
+            type="edit"
+            clientId={selectedClient.id}
             initialValues={selectedClient}
             onCancel={() => setEditModalOpen(false)}
           />
