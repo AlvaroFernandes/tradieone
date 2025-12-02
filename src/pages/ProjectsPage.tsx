@@ -23,6 +23,11 @@ export type ProjectItem = {
   createdBy?: number;
   createdOnUtc?: string;
   lastUpdatedUtc?: string;
+  // Additional fields expected by route handler
+  client: string;
+  location: string;
+  teamSize: number;
+  jobsCount: number;
 };
 
 export function ProjectsPage({ onViewProject }: { onViewProject?: (project: ProjectItem) => void }) {
@@ -147,7 +152,7 @@ export function ProjectsPage({ onViewProject }: { onViewProject?: (project: Proj
                       <TableCell className="text-gray-600">{p.endDate ? new Date(p.endDate).toLocaleDateString() : "-"}</TableCell>
                       <TableCell className="text-right">
                         <div className="inline-flex items-center">
-                          <button className="p-1 rounded hover:bg-gray-100" onClick={() => { setSelectedProject(p); setViewOpen(true); }}>
+                          <button className="p-1 rounded hover:bg-gray-100" onClick={() => { setSelectedProject(p); setViewOpen(true); if (onViewProject) onViewProject(p as ProjectItem); }}>
                             View
                           </button>
                           <button className="p-1 rounded ml-2 hover:bg-gray-100" onClick={() => { setSelectedProject(p); setEditOpen(true); }}>
