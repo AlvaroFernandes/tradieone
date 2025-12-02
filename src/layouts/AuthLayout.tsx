@@ -16,6 +16,7 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
           All-in-one solution for job management
         </p>
       </div>
+      
       {/* Left background image */}
 
       {/* Responsive card positioning */}

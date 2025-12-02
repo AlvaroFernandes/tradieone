@@ -11,10 +11,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 import { createProject, updateProject } from "@/services/ProjectsService";
+import { getClients } from "@/services/ClientsService";
+import type { Client } from "@/services/ClientsService";
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -50,6 +53,24 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onCancel, type = "add", proje
   });
 
   const { reset } = form;
+
+  const [clients, setClients] = React.useState<Client[]>([]);
+
+  // load clients for client selector
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await getClients({ pageNumber: 1, pageSize: 500 });
+        const items = Array.isArray(res) ? res : res?.items ?? [];
+        if (!mounted) return;
+        setClients(items as Client[]);
+      } catch (err) {
+        console.error("Failed to load clients for project form", err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   React.useEffect(() => {
     if (type === "edit" && initialValues) {
@@ -118,9 +139,20 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onCancel, type = "add", proje
             name="clientId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Client ID</FormLabel>
+                <FormLabel>Client</FormLabel>
                 <FormControl>
-                  <Input placeholder="Client id" {...field} />
+                  <Select onValueChange={field.onChange} value={field.value ? String(field.value) : undefined}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((c) => (
+                        <SelectItem key={String(c.id)} value={String(c.id)}>
+                          {((c as any).clientName) || (c as any).client || String(c.id)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FormControl>
                 <FormMessage />
               </FormItem>
