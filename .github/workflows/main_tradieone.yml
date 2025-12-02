@@ -27,17 +27,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
-
-      - name: Show dist contents
+      - name: Print Node & npm versions
         run: |
-          echo "Contents of dist:"
-          ls -la dist || echo "dist not found"
+          node -v
+          npm -v
+
+      - name: Typecheck (tsc)
+        run: npx tsc -b
+
+      - name: Vite build
+        run: npx vite build
+
+      - name: List dist folder
+        run: ls -la dist || echo "dist folder not found"
+
+      - name: Assert dist exists
+        run: |
+          if [ ! -d "dist" ]; then echo "dist not found - build failed"; exit 1; fi
 
       - name: Package dist (zip)
         run: |
-          if [ -d "dist" ]; then rm -f dist.zip; zip -r dist.zip dist; ls -la dist.zip; else echo "No dist folder to package"; fi
+          rm -f dist.zip
+          zip -r dist.zip dist
+          ls -la dist.zip
 
       - name: Upload artifact (optional, for troubleshooting)
         uses: actions/upload-artifact@v4

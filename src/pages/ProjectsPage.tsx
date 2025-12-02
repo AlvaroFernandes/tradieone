@@ -17,9 +17,9 @@ export type ProjectItem = {
   clientId?: number;
   name: string;
   description?: string;
-  startDate?: string;
-  status?: string;
-  endDate?: string;
+  startDate: string;
+  status: string;
+  endDate: string;
   createdBy?: number;
   createdOnUtc?: string;
   lastUpdatedUtc?: string;
