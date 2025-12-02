@@ -19,6 +19,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 
+interface Project {
+  status?: string;
+  isActive?: boolean;
+  // allow dynamic fields that might contain revenue/date values coming from API
+  [key: string]: string | number | boolean | undefined | null | Date;
+}
+
 type ClientTableRow = {
   id?: string;
   clientName: string;
@@ -33,6 +40,11 @@ type ClientTableRow = {
   postcode: string;
   activeProjects: number;
   totalJobs: number;
+  // optional projects array if provided by API
+  projects?: Project[];
+  // optional per-client revenue fallbacks
+  revenueThisMonth?: number;
+  monthlyRevenue?: number;
 };
 
 // Client data is loaded from the API; removed local dummy data
@@ -125,13 +137,14 @@ const ClientsPage = () => {
   ];
 
   const dateFieldNames = [
-    "invoiceDate",
     "date",
-    "createdAt",
     "startDate",
     "endDate",
-    "completedAt",
-    "billedDate",
+    "createdAt",
+    "updatedAt",
+    "dueDate",
+    "invoiceDate",
+    "projectDate",
   ];
 
   let totalActiveProjects = 0;
@@ -139,8 +152,8 @@ const ClientsPage = () => {
 
   for (const client of filteredClients) {
     // count active projects: prefer explicit projects array, otherwise use activeProjects field
-    if (Array.isArray((client as any).projects)) {
-      const projects = (client as any).projects as any[];
+    if (Array.isArray(client.projects)) {
+      const projects = client.projects as Project[];
       // count projects with status = active or truthy isActive, otherwise count all
       const activeCount = projects.filter((p) => {
         if (p == null) return false;
@@ -157,8 +170,12 @@ const ClientsPage = () => {
         let pd: Date | null = null;
         for (const df of dateFieldNames) {
           const raw = p[df];
-          if (raw) {
-            const parsed = new Date(raw);
+          if (raw instanceof Date) {
+            pd = raw;
+            break;
+          }
+          if (typeof raw === "string" || typeof raw === "number") {
+            const parsed = new Date(raw as string | number);
             if (!isNaN(parsed.getTime())) {
               pd = parsed;
               break;
@@ -170,9 +187,15 @@ const ClientsPage = () => {
         let rv = 0;
         for (const rf of revenueFieldNames) {
           const val = p[rf];
-          if (val != null && !isNaN(Number(val))) {
-            rv = Number(val);
-            break;
+          if (val != null) {
+            if (typeof val === "number" && !isNaN(val)) {
+              rv = val;
+              break;
+            }
+            if (typeof val === "string" && val.trim() !== "" && !isNaN(Number(val))) {
+              rv = Number(val);
+              break;
+            }
           }
         }
 
@@ -183,7 +206,7 @@ const ClientsPage = () => {
     } else {
       totalActiveProjects += Number(client.activeProjects ?? 0);
       // try per-client revenue field fallback
-      const clientRevenueThisMonth = Number((client as any).revenueThisMonth ?? (client as any).monthlyRevenue ?? 0) || 0;
+      const clientRevenueThisMonth = Number(client.revenueThisMonth ?? client.monthlyRevenue ?? 0) || 0;
       totalRevenueThisMonth += clientRevenueThisMonth;
     }
   }

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, {AxiosHeaders} from 'axios';
 import { API_BASE_URL } from '@/config/config';
 
 const apiClient = axios.create({
@@ -15,12 +15,13 @@ apiClient.interceptors.request.use(
       const token = localStorage.getItem('token');
       if (token) {
         if (!config.headers) {
-          config.headers = {};
+          config.headers = new AxiosHeaders();
         }
-        (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+        (config.headers as AxiosHeaders).set('Authorization', `Bearer ${token}`);
       }
     } catch (err) {
       // ignore localStorage errors
+      console.log('Error accessing localStorage for auth token', err);
     }
     return config;
   },
