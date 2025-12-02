@@ -105,11 +105,94 @@ const ClientsPage = () => {
       }, [filteredClients.length]);
 
   // Stats data, with dynamic total clients
+  // compute aggregated stats from clients and their projects (if present)
+  const now = new Date();
+  const isSameMonth = (d?: Date | null) => {
+    if (!d) return false;
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  };
+
+  const revenueFieldNames = [
+    "revenue",
+    "amount",
+    "total",
+    "value",
+    "price",
+    "budget",
+    "invoiceAmount",
+    "projectRevenue",
+    "invoice_value",
+  ];
+
+  const dateFieldNames = [
+    "invoiceDate",
+    "date",
+    "createdAt",
+    "startDate",
+    "endDate",
+    "completedAt",
+    "billedDate",
+  ];
+
+  let totalActiveProjects = 0;
+  let totalRevenueThisMonth = 0;
+
+  for (const client of filteredClients) {
+    // count active projects: prefer explicit projects array, otherwise use activeProjects field
+    if (Array.isArray((client as any).projects)) {
+      const projects = (client as any).projects as any[];
+      // count projects with status = active or truthy isActive, otherwise count all
+      const activeCount = projects.filter((p) => {
+        if (p == null) return false;
+        const status = (p.status || "").toString().toLowerCase();
+        if (status) return ["active", "in-progress", "ongoing"].includes(status);
+        if (typeof p.isActive === "boolean") return p.isActive;
+        return true;
+      }).length;
+      totalActiveProjects += activeCount;
+
+      // sum revenue for projects that have a date in current month
+      for (const p of projects) {
+        // find a date on the project
+        let pd: Date | null = null;
+        for (const df of dateFieldNames) {
+          const raw = p[df];
+          if (raw) {
+            const parsed = new Date(raw);
+            if (!isNaN(parsed.getTime())) {
+              pd = parsed;
+              break;
+            }
+          }
+        }
+
+        // find revenue value
+        let rv = 0;
+        for (const rf of revenueFieldNames) {
+          const val = p[rf];
+          if (val != null && !isNaN(Number(val))) {
+            rv = Number(val);
+            break;
+          }
+        }
+
+        if (pd && isSameMonth(pd)) {
+          totalRevenueThisMonth += rv;
+        }
+      }
+    } else {
+      totalActiveProjects += Number(client.activeProjects ?? 0);
+      // try per-client revenue field fallback
+      const clientRevenueThisMonth = Number((client as any).revenueThisMonth ?? (client as any).monthlyRevenue ?? 0) || 0;
+      totalRevenueThisMonth += clientRevenueThisMonth;
+    }
+  }
+
   const statsData = [
     { title: "Total Clients", stats: filteredClients.length, type: "number" as const },
-    { title: "Active Projects", stats: 18, style: "text-green-700", type: "number" as const },
-    { title: "Total Revenue", stats: 1200000, style: "text-gray-700", type: "currency" as const },
-    { title: "New This Month", stats: 89000, style: "text-blue-700", type: "currency" as const },
+    { title: "Active Projects", stats: totalActiveProjects || 0, style: "text-green-700", type: "number" as const },
+    { title: "Total Revenue (This Month)", stats: totalRevenueThisMonth || 0, style: "text-gray-700", type: "currency" as const },
+    { title: "New This Month", stats: 0, style: "text-blue-700", type: "currency" as const },
   ];
 
   function getInitials(clientName: string): import("react").ReactNode {
