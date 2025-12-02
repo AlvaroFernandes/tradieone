@@ -16,21 +16,40 @@ jobs:
         with:
           node-version: '20'      # match the node version you use locally
 
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build
         run: npm run build
 
+      - name: Show dist contents
+        run: |
+          echo "Contents of dist:"
+          ls -la dist || echo "dist not found"
+
+      - name: Package dist (zip)
+        run: |
+          if [ -d "dist" ]; then rm -f dist.zip; zip -r dist.zip dist; ls -la dist.zip; else echo "No dist folder to package"; fi
+
       - name: Upload artifact (optional, for troubleshooting)
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: ./dist
+          path: |
+            ./dist
+            ./dist.zip
 
-      - name: Deploy to Azure Web App
+      - name: Deploy to Azure Web App (zip)
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./dist
+          package: ./dist.zip

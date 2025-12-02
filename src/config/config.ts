@@ -21,6 +21,14 @@ export const API_ENDPOINTS = {
     updateClient: `${API_BASE_URL}/api/Clients/`,
     deleteClient: (id: string) => `${API_BASE_URL}/api/Clients/id=${id}`,
   },
+  projects: {
+    // REST endpoints for Project resource (list via GET, create POST, update PUT, delete DELETE)
+    list: `${API_BASE_URL}/api/project`,
+    projectDetail: (id: string) => `${API_BASE_URL}/api/project/${id}`,
+    addProject: `${API_BASE_URL}/api/project`,
+    updateProject: (id: string) => `${API_BASE_URL}/api/project/${id}`,
+    deleteProject: (id: string) => `${API_BASE_URL}/api/project/${id}`,
+  },
   // Add more endpoint groups as needed
   // projects: {
   //   list: `${API_BASE_URL}/projects`,
