@@ -99,36 +99,9 @@ jobs:
         run: |
           echo "dist.zip contents:";
           unzip -l dist.zip || true
-
-      - name: Load publish profile
-        id: publish_profile
-        run: |
-          APP_NAME=$(python - <<'PY'
-import xml.etree.ElementTree as ET
-tree = ET.parse('TradieOne.PublishSettings')
-root = tree.getroot()
-profile = root.find(".//publishProfile[@publishMethod='ZipDeploy']")
-if profile is None:
-    profile = root.find(".//publishProfile")
-if profile is None:
-    raise SystemExit("No publish profile found in TradieOne.PublishSettings")
-print(profile.get('msdeploySite') or '')
-PY
-)
-          if [ -z "$APP_NAME" ]; then
-            echo "Unable to read msdeploy site name from TradieOne.PublishSettings"
-            exit 1
-          fi
-          echo "app_name=$APP_NAME" >> "$GITHUB_OUTPUT"
-          {
-            echo "profile<<'EOF'"
-            cat TradieOne.PublishSettings
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Deploy to Azure Web App (zip)
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ steps.publish_profile.outputs.app_name }}
-          publish-profile: ${{ steps.publish_profile.outputs.profile }}
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./dist.zip
