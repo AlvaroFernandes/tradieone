@@ -3,6 +3,7 @@ name: Build and Deploy to Azure Web App TradieOne
 on:
   push:
     branches: [ main ]
+    
 
 jobs:
   check:
