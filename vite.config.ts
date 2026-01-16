@@ -1,17 +1,20 @@
-import path from "path"
-import tailwindcss from "@tailwindcss/vite"
-import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react' // or vue, svelte, etc.
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
+  plugins: [react()],
   build: {
-    outDir: "dist",
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        // Better chunking for Azure
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+        }
+      }
+    }
   },
+  server: {
+    port: 3000
+  }
 })

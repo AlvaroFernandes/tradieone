@@ -1,92 +1,85 @@
-name: Build and deploy Frontend to Azure Web App - TradieOne
+name: Deploy Vite App to Azure
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ main ]
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js version
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'  # Changed to 20.x (more stable)
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci  # Uses package-lock.json, more reliable than npm install
-
-      - name: Build project
-        run: npm run build
-        env:
-          CI: false  # Prevents warnings from failing the build
-
-      - name: List build output
-        run: |
-          echo "Build output structure:"
-          ls -la
-          echo "Checking dist folder:"
-          ls -la dist/ || echo "No dist folder"
-          echo "Checking build folder:"
-          ls -la build/ || echo "No build folder"
-
-      - name: Verify build artifacts
-        id: verify-build
-        run: |
-          # Check which build folder exists
-          if [ -d "dist" ]; then
-            echo "BUILD_DIR=dist" >> $GITHUB_OUTPUT
-            echo "BUILD_FOLDER=dist" >> $GITHUB_OUTPUT
-          elif [ -d "build" ]; then
-            echo "BUILD_DIR=build" >> $GITHUB_OUTPUT
-            echo "BUILD_FOLDER=build" >> $GITHUB_OUTPUT
-          elif [ -d "out" ]; then
-            echo "BUILD_DIR=out" >> $GITHUB_OUTPUT
-            echo "BUILD_FOLDER=out" >> $GITHUB_OUTPUT
-          else
-            echo "ERROR: No build folder found!"
-            ls -la
-            exit 1
-          fi
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: ${{ steps.verify-build.outputs.BUILD_DIR }}  # Uploads only the build folder
-          retention-days: 1
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
     environment: production
     
     steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-build
-          path: ./deploy-files
-
-      - name: List deployed files
-        run: |
-          echo "Files to deploy:"
-          ls -la ./deploy-files/
-          echo "Checking for index.html:"
-          find ./deploy-files -name "index.html" -type f || echo "index.html not found!"
-
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'TradieOne'
-          package: ./deploy-files
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build Vite project
+      run: |
+        npm run build
+        echo "Build complete. Checking dist folder..."
+        ls -la dist/
+    
+    - name: Create web.config for SPA routing
+      run: |
+        # Create web.config in dist folder
+        cat > dist/web.config << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <configuration>
+          <system.webServer>
+            <staticContent>
+              <mimeMap fileExtension=".json" mimeType="application/json" />
+              <mimeMap fileExtension=".webmanifest" mimeType="application/manifest+json" />
+              <mimeMap fileExtension=".mjs" mimeType="application/javascript" />
+              <mimeMap fileExtension=".wasm" mimeType="application/wasm" />
+            </staticContent>
+            <rewrite>
+              <rules>
+                <rule name="Static Files" stopProcessing="true">
+                  <match url="^(.+\.(?:css|js|mjs|jpg|jpeg|gif|png|ico|woff|woff2|ttf|eot|svg|json|webmanifest|wasm|xml|txt))$" />
+                  <action type="None" />
+                </rule>
+                <rule name="SPA Routes" stopProcessing="true">
+                  <match url=".*" />
+                  <conditions logicalGrouping="MatchAll">
+                    <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+                    <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+                  </conditions>
+                  <action type="Rewrite" url="/index.html" />
+                </rule>
+              </rules>
+            </rewrite>
+            <httpProtocol>
+              <customHeaders>
+                <remove name="X-Powered-By" />
+              </customHeaders>
+            </httpProtocol>
+          </system.webServer>
+        </configuration>
+        EOF
+        
+        echo "web.config created:"
+        cat dist/web.config
+    
+    - name: Verify deployment package
+      run: |
+        echo "Files to deploy:"
+        ls -la dist/
+        echo "Checking for essential files:"
+        [ -f "dist/index.html" ] && echo "✓ index.html found" || echo "✗ index.html missing"
+        [ -f "dist/web.config" ] && echo "✓ web.config found" || echo "✗ web.config missing"
+    
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: 'TradieOne'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ./dist  # Vite outputs to dist folder
