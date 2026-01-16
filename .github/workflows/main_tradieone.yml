@@ -26,7 +26,7 @@ jobs:
       run: |
         npm run build
         echo "✅ Build completed"
-        echo "Files in dist folder:"
+        echo "Dist folder contents:"
         ls -la dist/
     
     - name: Create web.config for SPA routing
@@ -37,7 +37,6 @@ jobs:
           <system.webServer>
             <staticContent>
               <mimeMap fileExtension=".json" mimeType="application/json" />
-              <mimeMap fileExtension=".webmanifest" mimeType="application/manifest+json" />
             </staticContent>
             <rewrite>
               <rules>
@@ -56,114 +55,55 @@ jobs:
         EOF
         echo "✅ web.config created"
     
-    - name: Install zip utility
-      run: sudo apt-get update && sudo apt-get install -y zip
-    
-    - name: Debug Authentication Test
-      env:
-        # Try ALL possible username formats
-        USERNAME_1: 'TradieOne$TradieOne'        # Format 1: Single $, no escape
-        USERNAME_2: '\$TradieOne'                # Format 2: Escaped $
-        USERNAME_3: 'TradieOne\\$TradieOne'      # Format 3: Double escaped
-        PASSWORD: 'PCJHSj6CBsARcejirbxlpLd3Zff4yDqiGRgSDBiloXxX572dQnn2H8KAGoDi'
+    - name: Deploy to Azure via Kudu
       run: |
+        echo "🚀 Starting deployment..."
+        
+        # CORRECT KUDU URL
         KUDU_URL="https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net"
         
-        echo "🔍 Testing authentication methods..."
+        # CORRECT CREDENTIALS (from your FTP credentials)
+        USERNAME='TradieOne\$TradieOne'  # With backslash before $
+        PASSWORD='n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6u'
         
-        # Test Format 1
-        echo ""
-        echo "Testing: USERNAME_1 = 'TradieOne\$TradieOne'"
-        if curl -s -f -u "$USERNAME_1:$PASSWORD" "$KUDU_URL/api/settings" > /dev/null; then
-          echo "✅ GET /api/settings works"
-          echo "WORKING_USERNAME='$USERNAME_1'" >> $GITHUB_ENV
-          echo "WORKING_FORMAT=1" >> $GITHUB_ENV
-        else
-          echo "❌ GET /api/settings failed"
-        fi
+        echo "Kudu URL: $KUDU_URL"
+        echo "Username: $USERNAME"
+        echo "Password length: ${#PASSWORD} characters"
         
-        # Test Format 2 if Format 1 failed
-        if [ -z "$WORKING_USERNAME" ]; then
-          echo ""
-          echo "Testing: USERNAME_2 = '\$TradieOne'"
-          if curl -s -f -u "$USERNAME_2:$PASSWORD" "$KUDU_URL/api/settings" > /dev/null; then
-            echo "✅ GET /api/settings works"
-            echo "WORKING_USERNAME='$USERNAME_2'" >> $GITHUB_ENV
-            echo "WORKING_FORMAT=2" >> $GITHUB_ENV
-          else
-            echo "❌ GET /api/settings failed"
-          fi
-        fi
-        
-        # Test Format 3 if others failed
-        if [ -z "$WORKING_USERNAME" ]; then
-          echo ""
-          echo "Testing: USERNAME_3 = 'TradieOne\\\$TradieOne'"
-          if curl -s -f -u "$USERNAME_3:$PASSWORD" "$KUDU_URL/api/settings" > /dev/null; then
-            echo "✅ GET /api/settings works"
-            echo "WORKING_USERNAME='$USERNAME_3'" >> $GITHUB_ENV
-            echo "WORKING_FORMAT=3" >> $GITHUB_ENV
-          else
-            echo "❌ GET /api/settings failed"
-          fi
-        fi
-        
-        if [ -n "$WORKING_USERNAME" ]; then
-          echo ""
-          echo "🎯 Using username format $WORKING_FORMAT: $WORKING_USERNAME"
-        else
-          echo "❌ All authentication methods failed for GET"
-          echo "Please reset your deployment credentials in Azure Portal"
-          exit 1
-        fi
-    
-    - name: Create Deployment Package
-      run: |
+        # Create deployment package
         echo "📦 Creating deployment package..."
         cd dist
         zip -r ../deploy.zip . -q
         echo "Zip size: $(du -h ../deploy.zip | cut -f1)"
-        echo "Zip contents:"
-        unzip -l ../deploy.zip | head -5
-    
-    - name: Deploy to Azure
-      env:
-        PASSWORD: 'PCJHSj6CBsARcejirbxlpLd3Zff4yDqiGRgSDBiloXxX572dQnn2H8KAGoDi'
-      run: |
-        KUDU_URL="https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net"
         
-        echo "🚀 Starting deployment..."
-        echo "Using username: ${{ env.WORKING_USERNAME }}"
-        echo "Kudu URL: $KUDU_URL"
+        # Test connection first
+        echo "🔗 Testing Kudu connection..."
+        if curl -s -f -u "$USERNAME:$PASSWORD" "$KUDU_URL/api/settings" > /dev/null; then
+          echo "✅ Kudu connection successful"
+        else
+          echo "❌ Kudu connection failed"
+          exit 1
+        fi
         
-        # First, test POST permission with a small test
-        echo "🔍 Testing POST permissions..."
-        TEST_RESPONSE=$(curl -s -X POST \
-          -u "${{ env.WORKING_USERNAME }}:$PASSWORD" \
-          "$KUDU_URL/api/zipdeploy" \
-          -d "test" \
-          -w "\nHTTP:%{http_code}" \
-          --silent || true)
+        # Deploy
+        echo "📤 Uploading deployment..."
         
-        echo "Test response: $TEST_RESPONSE"
-        
-        # Now deploy the actual zip
-        echo "📤 Uploading deployment package..."
-        
-        # Use verbose output to see exact error
-        HTTP_CODE=$(curl -v -X POST \
-          -u "${{ env.WORKING_USERNAME }}:$PASSWORD" \
+        # Use verbose to see exact request
+        RESPONSE=$(curl -v -X POST \
+          -u "$USERNAME:$PASSWORD" \
           "$KUDU_URL/api/zipdeploy" \
           --data-binary @../deploy.zip \
-          -w "%{http_code}" \
-          -o /tmp/deploy-response.txt \
-          --silent 2>&1 | grep -o "HTTP/[0-9.]* [0-9]*" | tail -1 | awk '{print $2}')
+          -w "\nHTTP_CODE:%{http_code}" \
+          --silent 2>&1)
+        
+        # Extract HTTP code
+        HTTP_CODE=$(echo "$RESPONSE" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2)
         
         echo "📡 HTTP Response Code: $HTTP_CODE"
         
-        if [ -f /tmp/deploy-response.txt ]; then
-          echo "Response body: $(cat /tmp/deploy-response.txt)"
-        fi
+        # Show last few lines of response
+        echo "Response snippet:"
+        echo "$RESPONSE" | tail -5
         
         if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
           echo "✅ DEPLOYMENT SUCCESSFUL!"
@@ -185,41 +125,8 @@ jobs:
             --max-time 10 || echo "App might still be starting..."
         else
           echo "❌ Deployment failed with HTTP $HTTP_CODE"
-          
-          # Show verbose error from curl
           echo ""
-          echo "=== VERBOSE ERROR LOG ==="
-          curl -v -X POST \
-            -u "${{ env.WORKING_USERNAME }}:$PASSWORD" \
-            "$KUDU_URL/api/zipdeploy" \
-            --data-binary @../deploy.zip 2>&1 | tail -20
-          
+          echo "Full error response:"
+          echo "$RESPONSE"
           exit 1
         fi
-    
-    # Fallback deployment method if Kudu fails
-    - name: Fallback - Deploy via Azure CLI
-      if: failure()
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-    
-    - name: Deploy with Azure CLI
-      if: failure()
-      run: |
-        echo "🔄 Trying fallback deployment with Azure CLI..."
-        
-        # Create fresh zip
-        cd dist
-        zip -r ../cli-deploy.zip .
-        
-        # Deploy using Azure CLI
-        az webapp deploy \
-          --resource-group appsvc_linux_australiaeast \
-          --name TradieOne \
-          --src-path ../cli-deploy.zip \
-          --type zip \
-          --verbose
-        
-        echo "✅ Azure CLI deployment complete!"
-        echo "🌐 https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
