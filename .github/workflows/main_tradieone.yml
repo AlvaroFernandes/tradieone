@@ -67,7 +67,7 @@ jobs:
         echo "📦 Created deploy.zip"
         
         # CORRECT KUDU URL for YOUR app
-        KUDU_URL="https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net"
+        KUDU_URL="https://app.tradieone.com/"
         
         echo "🔗 Kudu URL: $KUDU_URL"
         echo "👤 Username: $USERNAME"
@@ -99,12 +99,12 @@ jobs:
         
         echo ""
         echo "🎉 Your app is now live!"
-        echo "🌐 https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+        echo "🌐 https://app.tradieone.com/"
     
     - name: Test deployed app
       run: |
         echo "🔍 Testing deployed application..."
         sleep 5  # Give Azure a moment to deploy
-        curl -I "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net" \
+        curl -I "https://app.tradieone.com/" \
           --max-time 10 \
           || echo "App might still be starting..."
