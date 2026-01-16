@@ -45,11 +45,37 @@ jobs:
         with:
           name: node-app
       
+      - name: List downloaded files
+        run: |
+          echo "Downloaded artifact contents:"
+          ls -la
+          echo "Checking for dist folder:"
+          ls -la dist/ || echo "dist folder not found"
+      
+      - name: Verify build output
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "Error: dist folder missing. Build may have failed."
+            exit 1
+          fi
+          echo "dist folder exists. Contents:"
+          ls -la dist/
+          echo "Checking index.html:"
+          head -n 10 dist/index.html || echo "index.html not found or empty"
+      
+      - name: Package dist for deployment
+        run: |
+          echo "Packaging dist folder into dist.zip"
+          cd dist && zip -r ../dist.zip .
+          ls -la ../dist.zip
+          echo "Zip contents:"
+          unzip -l ../dist.zip
+      
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'TradieOne'
           slot-name: 'Production'
-          package: .
+          package: ./dist.zip
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
