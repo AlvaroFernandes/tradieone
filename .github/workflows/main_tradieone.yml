@@ -25,13 +25,6 @@ jobs:
     - name: Build Vite project
       run: |
         npm run build
-        
-        # Check if environment variables are needed for custom domain
-        if [ -f .env.production ]; then
-          echo "📋 Using .env.production"
-          cat .env.production | grep -v '^#' | grep -v '^$' || true
-        fi
-        
         echo "✅ Build completed"
         ls -la dist/
     
@@ -43,20 +36,9 @@ jobs:
           <system.webServer>
             <staticContent>
               <mimeMap fileExtension=".json" mimeType="application/json" />
-              <mimeMap fileExtension=".webmanifest" mimeType="application/manifest+json" />
             </staticContent>
             <rewrite>
               <rules>
-                <!-- Redirect HTTP to HTTPS -->
-                <rule name="Redirect to HTTPS" stopProcessing="true">
-                  <match url="(.*)" />
-                  <conditions>
-                    <add input="{HTTPS}" pattern="^OFF$" />
-                  </conditions>
-                  <action type="Redirect" url="https://{HTTP_HOST}/{R:1}" redirectType="Permanent" />
-                </rule>
-                
-                <!-- SPA routing rule -->
                 <rule name="SPA Routes" stopProcessing="true">
                   <match url=".*" />
                   <conditions logicalGrouping="MatchAll">
@@ -67,61 +49,61 @@ jobs:
                 </rule>
               </rules>
             </rewrite>
-            <httpProtocol>
-              <customHeaders>
-                <remove name="X-Powered-By" />
-                <!-- Security headers -->
-                <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains" />
-                <add name="X-Content-Type-Options" value="nosniff" />
-                <add name="X-Frame-Options" value="DENY" />
-              </customHeaders>
-            </httpProtocol>
           </system.webServer>
         </configuration>
         EOF
-        echo "✅ web.config created with HTTPS redirect and security headers"
+        echo "✅ web.config created"
     
     - name: Deploy to Azure via Kudu
-      env:
-        # Use your EXACT credentials
-        USERNAME: '$TradieOne'
-        PASSWORD: 'PCJHSj6CBsARcejirbxlpLd3Zff4yDqiGRgSDBiloXxX572dQnn2H8KAGoDi'
       run: |
         echo "🚀 Starting deployment..."
         
-        # Create zip of dist folder
-        cd dist
-        zip -r ../deploy.zip . > /dev/null
-        ZIP_SIZE=$(du -h ../deploy.zip | cut -f1)
-        echo "📦 Created deploy.zip ($ZIP_SIZE)"
-        
-        # Kudu URL
+        # CORRECT KUDU URL (from your finding)
         KUDU_URL="https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net"
         
-        echo "🔗 Deploying to: $KUDU_URL/api/zipdeploy"
+        # ESCAPE THE $ IN USERNAME!
+        USERNAME='\$TradieOne'  # Note: escaped $ with backslash
+        PASSWORD='PCJHSj6CBsARcejirbxlpLd3Zff4yDqiGRgSDBiloXxX572dQnn2H8KAGoDi'
         
-        # Deploy using Kudu ZIP API
-        echo "📤 Uploading deployment package..."
+        echo "Kudu URL: $KUDU_URL"
+        echo "Username: $USERNAME"
         
-        RESPONSE=$(curl -X POST \
+        # Create zip INSIDE dist folder (files at root of zip)
+        echo "📦 Creating deployment package..."
+        cd dist
+        zip -r ../deploy.zip . -q
+        
+        # Show zip contents
+        echo "Zip contents:"
+        unzip -l ../deploy.zip | head -10
+        
+        # Test connection first
+        echo "🔗 Testing Kudu connection..."
+        if curl -s -u "$USERNAME:$PASSWORD" "$KUDU_URL/api/settings" > /dev/null; then
+          echo "✅ Kudu connection successful"
+        else
+          echo "❌ Kudu connection failed"
+          exit 1
+        fi
+        
+        # Deploy
+        echo "📤 Uploading deployment..."
+        HTTP_CODE=$(curl -X POST \
           -u "$USERNAME:$PASSWORD" \
           "$KUDU_URL/api/zipdeploy" \
           --data-binary @../deploy.zip \
-          --write-out "\nHTTP_STATUS:%{http_code}" \
-          --silent \
-          --show-error)
+          -w "%{http_code}" \
+          -o /tmp/response.txt \
+          --silent)
         
-        # Extract HTTP status
-        HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
-        RESPONSE_BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS:")
+        echo "📡 HTTP Response Code: $HTTP_CODE"
         
-        echo "📊 Response: $RESPONSE_BODY"
-        echo "📡 HTTP Status: $HTTP_STATUS"
-        
-        if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 201 ]; then
-          echo "✅ Deployment successful!"
+        if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+          echo "✅ DEPLOYMENT SUCCESSFUL!"
+          echo "Response: $(cat /tmp/response.txt)"
         else
-          echo "❌ Deployment failed!"
+          echo "❌ Deployment failed with code: $HTTP_CODE"
+          echo "Error: $(cat /tmp/response.txt)"
           exit 1
         fi
         
@@ -129,33 +111,6 @@ jobs:
         rm -f ../deploy.zip
         
         echo ""
-        echo "🎉 Deployment complete!"
-        echo "🌐 Your app is available at:"
-        echo "   🔗 Custom domain: https://app.tradieone.com"
-        echo "   🔗 Azure domain: https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
-    
-    - name: Verify both domains
-      run: |
-        echo "🔍 Verifying domains..."
-        
-        DOMAINS=(
-          "https://app.tradieone.com"
-          "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
-        )
-        
-        for DOMAIN in "${DOMAINS[@]}"; do
-          echo ""
-          echo "Testing: $DOMAIN"
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$DOMAIN" --max-time 10)
-          
-          if [ "$STATUS" -eq 200 ]; then
-            echo "   ✅ HTTP $STATUS - Working"
-          elif [ "$STATUS" -eq 000 ]; then
-            echo "   ⚠️  Could not connect (might be still deploying)"
-          else
-            echo "   ❓ HTTP $STATUS"
-          fi
-        done
-        
-        echo ""
-        echo "✅ Verification complete!"
+        echo "🎉 Your app is deployed!"
+        echo "🌐 https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+        echo "🔗 https://app.tradieone.com"
