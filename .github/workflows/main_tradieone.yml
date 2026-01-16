@@ -1,108 +1,55 @@
-name: Build and Deploy to Azure Web App TradieOne
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy Node.js app to Azure Web App - TradieOne
 
 on:
   push:
-    branches: [ main ]
-    
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  check:
-    name: Typecheck
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Print Node & npm versions
-        run: |
-          node -v
-          npm -v
-
-      - name: Typecheck (tsc)
-        run: npx tsc -b
-
   build:
-    name: Build
     runs-on: ubuntu-latest
-    needs: check
+    permissions:
+      contents: read #This is required for actions/checkout
+
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node.js version
+        uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: '22.x'
 
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Vite build
-        run: npx vite build
-
-      - name: List dist folder
-        run: ls -la dist || echo "dist folder not found"
-
-      - name: Assert dist exists
+      - name: npm install, build, and test
         run: |
-          if [ ! -d "dist" ]; then echo "dist not found - build failed"; exit 1; fi
+          npm install
+          npm run build --if-present
+          npm run test --if-present
 
-      - name: Package dist (zip)
-        run: |
-          rm -f dist.zip
-          (cd dist && zip -r ../dist.zip .)
-          ls -la dist.zip
-
-      - name: Upload dist artifact
+      - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: dist-zip
-          path: ./dist.zip
+          name: node-app
+          path: .
 
   deploy:
-    name: Deploy
     runs-on: ubuntu-latest
     needs: build
+    
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Download dist artifact
+      - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: dist-zip
-
-      - name: Show packaged files
-        run: |
-          echo "dist.zip contents:";
-          unzip -l dist.zip || true
-      - name: Deploy to Azure Web App (zip)
+          name: node-app
+      
+      - name: 'Deploy to Azure Web App'
+        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          app-name: 'TradieOne'
+          slot-name: 'Production'
+          package: .
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./dist.zip
