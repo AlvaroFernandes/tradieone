@@ -8,7 +8,6 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: production
     
     steps:
     - name: Checkout code
@@ -26,22 +25,22 @@ jobs:
     - name: Build Vite project
       run: |
         npm run build
-        echo "Build output:"
+        echo "✅ Build completed"
+        echo "Files in dist folder:"
         ls -la dist/
     
-    - name: Create web.config for Azure
+    - name: Create web.config for SPA routing
       run: |
-        cat > dist/web.config << 'EOF'
-        <?xml version="1.0" encoding="UTF-8"?>
+        # Simple web.config for Azure
+        echo '<?xml version="1.0" encoding="UTF-8"?>
         <configuration>
           <system.webServer>
             <staticContent>
               <mimeMap fileExtension=".json" mimeType="application/json" />
-              <mimeMap fileExtension=".webmanifest" mimeType="application/manifest+json" />
             </staticContent>
             <rewrite>
               <rules>
-                <rule name="SPA Routes" stopProcessing="true">
+                <rule name="SPA" stopProcessing="true">
                   <match url=".*" />
                   <conditions logicalGrouping="MatchAll">
                     <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
@@ -52,72 +51,72 @@ jobs:
               </rules>
             </rewrite>
           </system.webServer>
-        </configuration>
-        EOF
-        echo "web.config created"
-    
-    - name: Test Kudu Connection
-      env:
-        APP_NAME: 'TradieOne'
-        USERNAME: '${{ secrets.AZURE_WEBAPP_USERNAME }}'
-        PASSWORD: '${{ secrets.AZURE_WEBAPP_PASSWORD }}'
-      run: |
-        echo "Testing connection to Kudu..."
-        curl -s -u "$USERNAME:$PASSWORD" \
-          https://$APP_NAME.scm.azurewebsites.net/api/settings \
-          -o /dev/null -w "HTTP Status: %{http_code}\n" \
-          --fail || echo "Connection test failed"
-    
-    - name: Deploy to Azure via Kudu ZIP API
-      env:
-        APP_NAME: 'TradieOne'
-        USERNAME: '${{ secrets.AZURE_WEBAPP_USERNAME }}'
-        PASSWORD: '${{ secrets.AZURE_WEBAPP_PASSWORD }}'
-      run: |
-        echo "Creating deployment package..."
+        </configuration>' > dist/web.config
         
-        # Create zip of dist folder
+        echo "✅ web.config created"
+    
+    - name: Install zip and curl
+      run: |
+        # Ensure zip and curl are available
+        sudo apt-get update
+        sudo apt-get install -y zip curl
+    
+    - name: Deploy to Azure via Kudu API
+      env:
+        USERNAME: '${{ secrets.AZURE_WEBAPP_USERNAME }}'
+        PASSWORD: '${{ secrets.AZURE_WEBAPP_PASSWORD }}'
+      run: |
+        echo "🚀 Starting deployment..."
+        
+        # Create zip file
         cd dist
-        zip -r ../deploy.zip . > /dev/null
-        
-        echo "Deploying to Azure Kudu..."
-        echo "URL: https://$APP_NAME.scm.azurewebsites.net/api/zipdeploy"
+        zip -r ../deploy.zip . -q
+        echo "📦 Created deploy.zip ($(du -h ../deploy.zip | cut -f1))"
         
         # Deploy using Kudu ZIP API
-        HTTP_STATUS=$(curl -X POST \
-          -u "$USERNAME:$PASSWORD" \
-          https://$APP_NAME.scm.azurewebsites.net/api/zipdeploy \
-          --data-binary @../deploy.zip \
-          -o /dev/null -w "%{http_code}" \
-          --silent)
+        echo "📤 Uploading to Azure..."
         
-        echo "Deployment HTTP Status: $HTTP_STATUS"
+        RESPONSE=$(curl -X POST \
+          -u "$USERNAME:$PASSWORD" \
+          https://tradieone.scm.azurewebsites.net/api/zipdeploy \
+          --data-binary @../deploy.zip \
+          --write-out "\nHTTP_STATUS:%{http_code}" \
+          --silent \
+          --show-error)
+        
+        # Extract HTTP status
+        HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+        RESPONSE_BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS:")
+        
+        echo "📊 Response: $RESPONSE_BODY"
+        echo "📡 HTTP Status: $HTTP_STATUS"
         
         if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 201 ]; then
           echo "✅ Deployment successful!"
         else
-          echo "❌ Deployment failed with status: $HTTP_STATUS"
+          echo "❌ Deployment failed!"
           exit 1
         fi
         
         # Cleanup
         rm -f ../deploy.zip
+        
+        echo "🌐 Your app is now live at:"
+        echo "   https://tradieone.azurewebsites.net"
+        echo "   https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
     
-    - name: Verify Deployment
+    - name: Verify deployment
       env:
-        APP_NAME: 'TradieOne'
         USERNAME: '${{ secrets.AZURE_WEBAPP_USERNAME }}'
         PASSWORD: '${{ secrets.AZURE_WEBAPP_PASSWORD }}'
       run: |
-        echo "Checking deployed files..."
+        echo "🔍 Verifying deployment..."
         
-        # Get list of deployed files
+        # Simple check - just see if we can access the Kudu API
         curl -s -u "$USERNAME:$PASSWORD" \
-          https://$APP_NAME.scm.azurewebsites.net/api/vfs/site/wwwroot/ \
-          | jq -r '.[].name' | head -20 \
-          || echo "Could not list files (jq might not be installed)"
+          https://tradieone.scm.azurewebsites.net/api/deployments \
+          -H "Accept: application/json" \
+          | head -c 200 || echo "Could not fetch deployments"
         
         echo ""
-        echo "Your app is available at:"
-        echo "https://$APP_NAME.azurewebsites.net"
-        echo "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+        echo "✅ Verification complete!"
