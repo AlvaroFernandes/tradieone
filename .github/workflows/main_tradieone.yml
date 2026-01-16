@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     
     steps:
@@ -25,13 +25,12 @@ jobs:
     - name: Build Vite project
       run: |
         npm run build
-        echo "✅ Build completed"
-        echo "Files in dist folder:"
+        echo "✅ Build completed successfully"
+        echo "Dist folder contents:"
         ls -la dist/
     
     - name: Create web.config for SPA routing
       run: |
-        # Simple web.config for Azure
         echo '<?xml version="1.0" encoding="UTF-8"?>
         <configuration>
           <system.webServer>
@@ -52,71 +51,60 @@ jobs:
             </rewrite>
           </system.webServer>
         </configuration>' > dist/web.config
-        
         echo "✅ web.config created"
     
-    - name: Install zip and curl
-      run: |
-        # Ensure zip and curl are available
-        sudo apt-get update
-        sudo apt-get install -y zip curl
-    
-    - name: Deploy to Azure via Kudu API
+    - name: Deploy to Azure via Kudu
       env:
-        USERNAME: '${{ secrets.AZURE_WEBAPP_USERNAME }}'
-        PASSWORD: '${{ secrets.AZURE_WEBAPP_PASSWORD }}'
+        # Use these EXACT values from your Azure credentials
+        USERNAME: '$TradieOne'  # Literally: $TradieOne
+        PASSWORD: 'PCJHSj6CBsARcejirbxlpLd3Zff4yDqiGRgSDBiloXxX572dQnn2H8KAGoDi'
       run: |
-        echo "🚀 Starting deployment..."
+        echo "🚀 Starting deployment to Azure..."
         
-        # Create zip file
+        # Create zip of dist folder
         cd dist
-        zip -r ../deploy.zip . -q
-        echo "📦 Created deploy.zip ($(du -h ../deploy.zip | cut -f1))"
+        zip -r ../deploy.zip . > /dev/null
+        echo "📦 Created deploy.zip"
+        
+        # CORRECT KUDU URL for YOUR app
+        KUDU_URL="https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net"
+        
+        echo "🔗 Kudu URL: $KUDU_URL"
+        echo "👤 Username: $USERNAME"
         
         # Deploy using Kudu ZIP API
-        echo "📤 Uploading to Azure..."
+        echo "📤 Uploading deployment package..."
         
-        RESPONSE=$(curl -X POST \
+        HTTP_CODE=$(curl -X POST \
           -u "$USERNAME:$PASSWORD" \
-          https://tradieone.scm.azurewebsites.net/api/zipdeploy \
+          "$KUDU_URL/api/zipdeploy" \
           --data-binary @../deploy.zip \
-          --write-out "\nHTTP_STATUS:%{http_code}" \
+          --write-out "%{http_code}" \
           --silent \
-          --show-error)
+          --output /tmp/response.txt)
         
-        # Extract HTTP status
-        HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
-        RESPONSE_BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS:")
+        echo "📡 HTTP Response Code: $HTTP_CODE"
         
-        echo "📊 Response: $RESPONSE_BODY"
-        echo "📡 HTTP Status: $HTTP_STATUS"
-        
-        if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 201 ]; then
+        if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
           echo "✅ Deployment successful!"
+          echo "Response: $(cat /tmp/response.txt)"
         else
-          echo "❌ Deployment failed!"
+          echo "❌ Deployment failed with code: $HTTP_CODE"
+          echo "Error response: $(cat /tmp/response.txt)"
           exit 1
         fi
         
         # Cleanup
         rm -f ../deploy.zip
         
-        echo "🌐 Your app is now live at:"
-        echo "   https://tradieone.azurewebsites.net"
-        echo "   https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
-    
-    - name: Verify deployment
-      env:
-        USERNAME: '${{ secrets.AZURE_WEBAPP_USERNAME }}'
-        PASSWORD: '${{ secrets.AZURE_WEBAPP_PASSWORD }}'
-      run: |
-        echo "🔍 Verifying deployment..."
-        
-        # Simple check - just see if we can access the Kudu API
-        curl -s -u "$USERNAME:$PASSWORD" \
-          https://tradieone.scm.azurewebsites.net/api/deployments \
-          -H "Accept: application/json" \
-          | head -c 200 || echo "Could not fetch deployments"
-        
         echo ""
-        echo "✅ Verification complete!"
+        echo "🎉 Your app is now live!"
+        echo "🌐 https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+    
+    - name: Test deployed app
+      run: |
+        echo "🔍 Testing deployed application..."
+        sleep 5  # Give Azure a moment to deploy
+        curl -I "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net" \
+          --max-time 10 \
+          || echo "App might still be starting..."
