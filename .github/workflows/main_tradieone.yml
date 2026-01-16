@@ -3,6 +3,7 @@ name: Deploy Vite App to Azure
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -25,12 +26,11 @@ jobs:
     - name: Build Vite project
       run: |
         npm run build
-        echo "Build complete. Checking dist folder..."
+        echo "Build output:"
         ls -la dist/
     
-    - name: Create web.config for SPA routing
+    - name: Create web.config for Azure
       run: |
-        # Create web.config in dist folder
         cat > dist/web.config << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <configuration>
@@ -38,15 +38,9 @@ jobs:
             <staticContent>
               <mimeMap fileExtension=".json" mimeType="application/json" />
               <mimeMap fileExtension=".webmanifest" mimeType="application/manifest+json" />
-              <mimeMap fileExtension=".mjs" mimeType="application/javascript" />
-              <mimeMap fileExtension=".wasm" mimeType="application/wasm" />
             </staticContent>
             <rewrite>
               <rules>
-                <rule name="Static Files" stopProcessing="true">
-                  <match url="^(.+\.(?:css|js|mjs|jpg|jpeg|gif|png|ico|woff|woff2|ttf|eot|svg|json|webmanifest|wasm|xml|txt))$" />
-                  <action type="None" />
-                </rule>
                 <rule name="SPA Routes" stopProcessing="true">
                   <match url=".*" />
                   <conditions logicalGrouping="MatchAll">
@@ -57,29 +51,73 @@ jobs:
                 </rule>
               </rules>
             </rewrite>
-            <httpProtocol>
-              <customHeaders>
-                <remove name="X-Powered-By" />
-              </customHeaders>
-            </httpProtocol>
           </system.webServer>
         </configuration>
         EOF
-        
-        echo "web.config created:"
-        cat dist/web.config
+        echo "web.config created"
     
-    - name: Verify deployment package
+    - name: Test Kudu Connection
+      env:
+        APP_NAME: 'TradieOne'
+        USERNAME: '${{ secrets.AZURE_WEBAPP_USERNAME }}'
+        PASSWORD: '${{ secrets.AZURE_WEBAPP_PASSWORD }}'
       run: |
-        echo "Files to deploy:"
-        ls -la dist/
-        echo "Checking for essential files:"
-        [ -f "dist/index.html" ] && echo "✓ index.html found" || echo "✗ index.html missing"
-        [ -f "dist/web.config" ] && echo "✓ web.config found" || echo "✗ web.config missing"
+        echo "Testing connection to Kudu..."
+        curl -s -u "$USERNAME:$PASSWORD" \
+          https://$APP_NAME.scm.azurewebsites.net/api/settings \
+          -o /dev/null -w "HTTP Status: %{http_code}\n" \
+          --fail || echo "Connection test failed"
     
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v3
-      with:
-        app-name: 'TradieOne'
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: ./dist  # Vite outputs to dist folder
+    - name: Deploy to Azure via Kudu ZIP API
+      env:
+        APP_NAME: 'TradieOne'
+        USERNAME: '${{ secrets.AZURE_WEBAPP_USERNAME }}'
+        PASSWORD: '${{ secrets.AZURE_WEBAPP_PASSWORD }}'
+      run: |
+        echo "Creating deployment package..."
+        
+        # Create zip of dist folder
+        cd dist
+        zip -r ../deploy.zip . > /dev/null
+        
+        echo "Deploying to Azure Kudu..."
+        echo "URL: https://$APP_NAME.scm.azurewebsites.net/api/zipdeploy"
+        
+        # Deploy using Kudu ZIP API
+        HTTP_STATUS=$(curl -X POST \
+          -u "$USERNAME:$PASSWORD" \
+          https://$APP_NAME.scm.azurewebsites.net/api/zipdeploy \
+          --data-binary @../deploy.zip \
+          -o /dev/null -w "%{http_code}" \
+          --silent)
+        
+        echo "Deployment HTTP Status: $HTTP_STATUS"
+        
+        if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 201 ]; then
+          echo "✅ Deployment successful!"
+        else
+          echo "❌ Deployment failed with status: $HTTP_STATUS"
+          exit 1
+        fi
+        
+        # Cleanup
+        rm -f ../deploy.zip
+    
+    - name: Verify Deployment
+      env:
+        APP_NAME: 'TradieOne'
+        USERNAME: '${{ secrets.AZURE_WEBAPP_USERNAME }}'
+        PASSWORD: '${{ secrets.AZURE_WEBAPP_PASSWORD }}'
+      run: |
+        echo "Checking deployed files..."
+        
+        # Get list of deployed files
+        curl -s -u "$USERNAME:$PASSWORD" \
+          https://$APP_NAME.scm.azurewebsites.net/api/vfs/site/wwwroot/ \
+          | jq -r '.[].name' | head -20 \
+          || echo "Could not list files (jq might not be installed)"
+        
+        echo ""
+        echo "Your app is available at:"
+        echo "https://$APP_NAME.azurewebsites.net"
+        echo "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
