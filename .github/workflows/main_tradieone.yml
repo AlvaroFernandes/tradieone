@@ -26,7 +26,7 @@ jobs:
       run: |
         npm run build
         echo "✅ Build completed"
-        echo "Dist folder contents:"
+        echo "Dist folder:"
         ls -la dist/
     
     - name: Create web.config for SPA routing
@@ -55,20 +55,19 @@ jobs:
         EOF
         echo "✅ web.config created"
     
-    - name: Deploy to Azure via Kudu
+    - name: Deploy to Azure
       run: |
         echo "🚀 Starting deployment..."
         
-        # CORRECT KUDU URL
+        # EXACT CREDENTIALS FROM PUBLISH PROFILE
+        USERNAME='$TradieOne'  # From publish profile: userName="$TradieOne"
+        PASSWORD='n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu'  # Note: ends with 'uu'
         KUDU_URL="https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net"
         
-        # CORRECT CREDENTIALS (from your FTP credentials)
-        USERNAME='TradieOne\$TradieOne'  # With backslash before $
-        PASSWORD='n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6u'
-        
+        echo "📋 Deployment Details:"
         echo "Kudu URL: $KUDU_URL"
         echo "Username: $USERNAME"
-        echo "Password length: ${#PASSWORD} characters"
+        echo "Password length: ${#PASSWORD} chars"
         
         # Create deployment package
         echo "📦 Creating deployment package..."
@@ -76,37 +75,40 @@ jobs:
         zip -r ../deploy.zip . -q
         echo "Zip size: $(du -h ../deploy.zip | cut -f1)"
         
-        # Test connection first
-        echo "🔗 Testing Kudu connection..."
+        # Test connection
+        echo "🔗 Testing connection..."
         if curl -s -f -u "$USERNAME:$PASSWORD" "$KUDU_URL/api/settings" > /dev/null; then
-          echo "✅ Kudu connection successful"
+          echo "✅ Connection successful"
         else
-          echo "❌ Kudu connection failed"
-          exit 1
+          echo "❌ Connection failed"
+          echo "Trying with escaped $..."
+          
+          # Try escaped version
+          USERNAME_ESC='\$TradieOne'
+          if curl -s -f -u "$USERNAME_ESC:$PASSWORD" "$KUDU_URL/api/settings" > /dev/null; then
+            echo "✅ Connection successful with escaped $"
+            USERNAME="$USERNAME_ESC"
+          else
+            echo "❌ All connection attempts failed"
+            exit 1
+          fi
         fi
         
         # Deploy
         echo "📤 Uploading deployment..."
-        
-        # Use verbose to see exact request
-        RESPONSE=$(curl -v -X POST \
+        HTTP_CODE=$(curl -X POST \
           -u "$USERNAME:$PASSWORD" \
           "$KUDU_URL/api/zipdeploy" \
           --data-binary @../deploy.zip \
-          -w "\nHTTP_CODE:%{http_code}" \
-          --silent 2>&1)
-        
-        # Extract HTTP code
-        HTTP_CODE=$(echo "$RESPONSE" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2)
+          -w "%{http_code}" \
+          -o /tmp/response.txt \
+          --silent)
         
         echo "📡 HTTP Response Code: $HTTP_CODE"
         
-        # Show last few lines of response
-        echo "Response snippet:"
-        echo "$RESPONSE" | tail -5
-        
         if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
           echo "✅ DEPLOYMENT SUCCESSFUL!"
+          echo "Response: $(cat /tmp/response.txt | head -50)"
           
           # Cleanup
           rm -f ../deploy.zip
@@ -116,17 +118,15 @@ jobs:
           echo "🌐 Azure URL: https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
           echo "🔗 Custom Domain: https://app.tradieone.com"
           
-          # Quick test
+          # Test the deployed app
           echo ""
           echo "🔍 Testing deployed app..."
-          sleep 3
+          sleep 5
           curl -s -o /dev/null -w "App status: %{http_code}\n" \
             "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net" \
-            --max-time 10 || echo "App might still be starting..."
+            --max-time 15 || echo "App might still be starting..."
         else
-          echo "❌ Deployment failed with HTTP $HTTP_CODE"
-          echo ""
-          echo "Full error response:"
-          echo "$RESPONSE"
+          echo "❌ Deployment failed with code: $HTTP_CODE"
+          echo "Error: $(cat /tmp/response.txt)"
           exit 1
         fi
