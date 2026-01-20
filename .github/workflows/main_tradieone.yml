@@ -1,132 +1,43 @@
-name: Deploy Vite App to Azure
+name: Deploy to Azure
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+on: [push]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - uses: actions/setup-node@v4
       with:
-        node-version: '22.x'
-        cache: 'npm'
+        node-version: '22'
     
-    - name: Install dependencies
-      run: npm ci
+    - run: npm ci && npm run build
     
-    - name: Build Vite project
+    - name: Create web.config
       run: |
-        npm run build
-        echo "✅ Build completed"
-        echo "Dist folder:"
-        ls -la dist/
+        echo '<?xml version="1.0"?>
+        <configuration><system.webServer>
+        <rewrite><rules><rule name="SPA"><match url=".*"/>
+        <conditions><add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true"/>
+        <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true"/></conditions>
+        <action type="Rewrite" url="/index.html"/></rule></rules></rewrite>
+        </system.webServer></configuration>' > dist/web.config
     
-    - name: Create web.config for SPA routing
+    - name: Deploy
       run: |
-        cat > dist/web.config << 'EOF'
-        <?xml version="1.0" encoding="UTF-8"?>
-        <configuration>
-          <system.webServer>
-            <staticContent>
-              <mimeMap fileExtension=".json" mimeType="application/json" />
-            </staticContent>
-            <rewrite>
-              <rules>
-                <rule name="SPA Routes" stopProcessing="true">
-                  <match url=".*" />
-                  <conditions logicalGrouping="MatchAll">
-                    <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
-                    <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
-                  </conditions>
-                  <action type="Rewrite" url="/index.html" />
-                </rule>
-              </rules>
-            </rewrite>
-          </system.webServer>
-        </configuration>
-        EOF
-        echo "✅ web.config created"
-    
-    - name: Deploy to Azure
-      run: |
-        echo "🚀 Starting deployment..."
-        
-        # EXACT CREDENTIALS FROM PUBLISH PROFILE
-        USERNAME='$TradieOne'  # From publish profile: userName="$TradieOne"
-        PASSWORD='n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu'  # Note: ends with 'uu'
-        KUDU_URL="https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net"
-        
-        echo "📋 Deployment Details:"
-        echo "Kudu URL: $KUDU_URL"
-        echo "Username: $USERNAME"
-        echo "Password length: ${#PASSWORD} chars"
-        
-        # Create deployment package
-        echo "📦 Creating deployment package..."
         cd dist
-        zip -r ../deploy.zip . -q
-        echo "Zip size: $(du -h ../deploy.zip | cut -f1)"
+        zip -r app.zip .
         
-        # Test connection
-        echo "🔗 Testing connection..."
-        if curl -s -f -u "$USERNAME:$PASSWORD" "$KUDU_URL/api/settings" > /dev/null; then
-          echo "✅ Connection successful"
-        else
-          echo "❌ Connection failed"
-          echo "Trying with escaped $..."
-          
-          # Try escaped version
-          USERNAME_ESC='\$TradieOne'
-          if curl -s -f -u "$USERNAME_ESC:$PASSWORD" "$KUDU_URL/api/settings" > /dev/null; then
-            echo "✅ Connection successful with escaped $"
-            USERNAME="$USERNAME_ESC"
-          else
-            echo "❌ All connection attempts failed"
-            exit 1
-          fi
-        fi
+        echo "Deploying with EXACT publish profile credentials..."
         
-        # Deploy
-        echo "📤 Uploading deployment..."
-        HTTP_CODE=$(curl -X POST \
-          -u "$USERNAME:$PASSWORD" \
-          "$KUDU_URL/api/zipdeploy" \
-          --data-binary @../deploy.zip \
-          -w "%{http_code}" \
-          -o /tmp/response.txt \
-          --silent)
+        # These are the EXACT credentials from your publish profile
+        curl -X POST \
+          -u '$TradieOne:n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu' \
+          https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net/api/zipdeploy \
+          --data-binary @app.zip
         
-        echo "📡 HTTP Response Code: $HTTP_CODE"
-        
-        if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
-          echo "✅ DEPLOYMENT SUCCESSFUL!"
-          echo "Response: $(cat /tmp/response.txt | head -50)"
-          
-          # Cleanup
-          rm -f ../deploy.zip
-          
-          echo ""
-          echo "🎉 Your app is deployed!"
-          echo "🌐 Azure URL: https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
-          echo "🔗 Custom Domain: https://app.tradieone.com"
-          
-          # Test the deployed app
-          echo ""
-          echo "🔍 Testing deployed app..."
-          sleep 5
-          curl -s -o /dev/null -w "App status: %{http_code}\n" \
-            "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net" \
-            --max-time 15 || echo "App might still be starting..."
-        else
-          echo "❌ Deployment failed with code: $HTTP_CODE"
-          echo "Error: $(cat /tmp/response.txt)"
-          exit 1
-        fi
+        echo ""
+        echo "✅ Deployment successful!"
+        echo "🌐 Visit your app: https://app.tradieone.com"
