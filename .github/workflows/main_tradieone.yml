@@ -1,43 +1,148 @@
-name: Deploy to Azure
+name: Deploy to Azure App Service
 
-on: [push]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AZURE_WEBAPP_NAME: 'TradieOne'
+  AZURE_WEBAPP_URL: 'https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net'
+  CUSTOM_DOMAIN: 'https://app.tradieone.com'
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
     
-    - uses: actions/setup-node@v4
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
-        node-version: '22'
+        node-version: '22.x'
+        cache: 'npm'
     
-    - run: npm ci && npm run build
+    - name: Install dependencies
+      run: npm ci
     
-    - name: Create web.config
+    - name: Run tests (if any)
+      run: npm test --if-present
+    
+    - name: Build project
       run: |
-        echo '<?xml version="1.0"?>
-        <configuration><system.webServer>
-        <rewrite><rules><rule name="SPA"><match url=".*"/>
-        <conditions><add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true"/>
-        <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true"/></conditions>
-        <action type="Rewrite" url="/index.html"/></rule></rules></rewrite>
-        </system.webServer></configuration>' > dist/web.config
+        npm run build
+        echo "✅ Build completed"
+        echo "Dist folder size: $(du -sh dist/)"
     
-    - name: Deploy
+    - name: Create Azure web.config
       run: |
+        # Create web.config for SPA routing and security
+        cat > dist/web.config << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <configuration>
+          <system.webServer>
+            <staticContent>
+              <mimeMap fileExtension=".json" mimeType="application/json" />
+              <mimeMap fileExtension=".webmanifest" mimeType="application/manifest+json" />
+            </staticContent>
+            <rewrite>
+              <rules>
+                <!-- Redirect HTTP to HTTPS -->
+                <rule name="Redirect to HTTPS" stopProcessing="true">
+                  <match url="(.*)" />
+                  <conditions>
+                    <add input="{HTTPS}" pattern="^OFF$" />
+                  </conditions>
+                  <action type="Redirect" url="https://{HTTP_HOST}/{R:1}" redirectType="Permanent" />
+                </rule>
+                
+                <!-- SPA routing -->
+                <rule name="SPA Routes" stopProcessing="true">
+                  <match url=".*" />
+                  <conditions logicalGrouping="MatchAll">
+                    <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+                    <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+                  </conditions>
+                  <action type="Rewrite" url="/index.html" />
+                </rule>
+              </rules>
+            </rewrite>
+            <httpProtocol>
+              <customHeaders>
+                <!-- Security headers -->
+                <remove name="X-Powered-By" />
+                <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains" />
+                <add name="X-Content-Type-Options" value="nosniff" />
+                <add name="X-Frame-Options" value="DENY" />
+                <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
+              </customHeaders>
+            </httpProtocol>
+          </system.webServer>
+        </configuration>
+        EOF
+        echo "✅ web.config created with HTTPS redirect and security headers"
+    
+    - name: Deploy to Azure App Service
+      env:
+        AZURE_WEBAPP_USERNAME: '$TradieOne'
+        AZURE_WEBAPP_PASSWORD: 'n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu'
+      run: |
+        echo "🚀 Starting deployment to Azure..."
+        
+        # Create deployment package
         cd dist
-        zip -r app.zip .
+        zip -r ../deploy.zip . -q
+        ZIP_SIZE=$(du -h ../deploy.zip | cut -f1)
+        echo "📦 Created deploy.zip ($ZIP_SIZE)"
         
-        echo "Deploying with EXACT publish profile credentials..."
+        # Deploy using Kudu ZIP API
+        echo "📤 Uploading to Azure..."
         
-        # These are the EXACT credentials from your publish profile
-        curl -X POST \
-          -u '$TradieOne:n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu' \
-          https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net/api/zipdeploy \
-          --data-binary @app.zip
+        RESPONSE=$(curl -s -X POST \
+          -u "$AZURE_WEBAPP_USERNAME:$AZURE_WEBAPP_PASSWORD" \
+          "${{ env.AZURE_WEBAPP_URL }}/api/zipdeploy" \
+          --data-binary @../deploy.zip \
+          -w "\nHTTP_STATUS:%{http_code}" \
+          --fail-with-body)
         
-        echo ""
-        echo "✅ Deployment successful!"
-        echo "🌐 Visit your app: https://app.tradieone.com"
+        HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+        
+        if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 201 ]; then
+          echo "✅ Deployment successful! (HTTP $HTTP_STATUS)"
+          
+          # Cleanup
+          rm -f ../deploy.zip
+          
+          echo ""
+          echo "🎉 Deployment complete!"
+          echo "🌐 Azure URL: https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+          echo "🔗 Custom Domain: ${{ env.CUSTOM_DOMAIN }}"
+          
+          # Verify deployment
+          echo ""
+          echo "🔍 Verifying deployment..."
+          sleep 3
+          for url in \
+            "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net" \
+            "${{ env.CUSTOM_DOMAIN }}"
+          do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$url" --max-time 10 || echo "000")
+            if [ "$STATUS" -eq 200 ]; then
+              echo "✅ $url - HTTP $STATUS"
+            else
+              echo "⚠️  $url - HTTP $STATUS (may still be starting)"
+            fi
+          done
+        else
+          echo "❌ Deployment failed (HTTP $HTTP_STATUS)"
+          echo "Response: $RESPONSE"
+          exit 1
+        fi
+    
+    - name: Post-deployment cleanup
+      if: always()
+      run: |
+        echo "🧹 Cleanup completed"
