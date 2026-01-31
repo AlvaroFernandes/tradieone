@@ -17,27 +17,14 @@ jobs:
     
     - run: npm ci && npm run build
     
-    - name: Debug - Check build output
+    - name: Create correct web.config
       run: |
-        echo "📁 Build output check:"
-        echo "Files in dist folder:"
-        ls -la dist/
-        echo ""
-        echo "Checking index.html:"
-        [ -f "dist/index.html" ] && echo "✅ index.html exists" || echo "❌ index.html missing"
-        echo "First line of index.html:"
-        head -1 dist/index.html
-    
-    - name: Create CORRECT web.config
-      run: |
-        # Complete, valid web.config
         cat > dist/web.config << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <configuration>
           <system.webServer>
             <staticContent>
               <mimeMap fileExtension=".json" mimeType="application/json" />
-              <mimeMap fileExtension=".webmanifest" mimeType="application/manifest+json" />
             </staticContent>
             <rewrite>
               <rules>
@@ -51,77 +38,46 @@ jobs:
                 </rule>
               </rules>
             </rewrite>
-            <httpProtocol>
-              <customHeaders>
-                <remove name="X-Powered-By" />
-              </customHeaders>
-            </httpProtocol>
           </system.webServer>
         </configuration>
         EOF
-        
-        echo "✅ Valid web.config created"
     
-    - name: Deploy
+    - name: Create CLEAN deployment package
       run: |
-        echo "🚀 Starting deployment..."
-        cd dist
+        echo "📦 Creating clean deployment package..."
         
-        echo "📦 Files to deploy:"
-        ls -la
+        # Create a TEMP folder with ONLY the built files
+        mkdir -p deploy_temp
+        cp -r dist/* deploy_temp/
         
-        echo ""
-        echo "📄 web.config verification:"
-        head -10 web.config
-        echo "..."
-        tail -5 web.config
+        # Make sure we have the correct files
+        echo "Files in deploy_temp:"
+        ls -la deploy_temp/
         
-        # Create zip
-        zip -r app.zip .
+        # Create zip from temp folder
+        cd deploy_temp
+        zip -r ../deploy.zip .
         
-        echo ""
-        echo "📤 Deploying to Azure..."
+        echo "✅ Clean package created"
+    
+    - name: Deploy CLEAN package
+      run: |
+        echo "🚀 Deploying clean package..."
         
-        # Deploy
         curl -X POST \
           -u '$TradieOne:n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu' \
           https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net/api/zipdeploy \
-          --data-binary @app.zip
+          --data-binary @deploy.zip
         
         echo ""
-        echo "✅ Deployment command sent!"
+        echo "✅ Clean deployment sent!"
     
-    - name: Restart App Service (if needed)
-      run: |
-        echo "🔄 Restarting App Service..."
-        # Using Azure CLI if you have credentials
-        # az webapp restart --name TradieOne --resource-group appsvc_linux_australiaeast
-        echo "If app still shows default page, manually restart in Azure Portal"
-    
-    - name: Verify deployment
+    - name: Verify cleanup worked
       run: |
         echo "🔍 Verifying deployment..."
-        echo "Waiting 10 seconds for Azure to process..."
         sleep 10
         
-        echo ""
         echo "Testing Azure URL..."
-        AZURE_URL="https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
-        AZURE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$AZURE_URL" --max-time 15 || echo "000")
-        echo "HTTP Status: $AZURE_STATUS"
-        
-        if [ "$AZURE_STATUS" -eq 200 ]; then
-          echo "✅ Azure URL is serving your app!"
-          echo "Content preview:"
-          curl -s "$AZURE_URL" | grep -o "<title>[^<]*</title>" || echo "Could not get title"
-        elif [ "$AZURE_STATUS" -eq 403 ] || [ "$AZURE_STATUS" -eq 404 ]; then
-          echo "⚠️  Got $AZURE_STATUS - Checking if web.config is working..."
-          echo "Try accessing: $AZURE_URL/index.html"
-        else
-          echo "⚠️  Status $AZURE_STATUS - App might still be starting"
-        fi
-        
-        echo ""
-        echo "🌐 Your URLs:"
-        echo "   Azure: $AZURE_URL"
-        echo "   Custom: https://app.tradieone.com"
+        curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" \
+          https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net \
+          --max-time 15 || echo "Still processing..."
