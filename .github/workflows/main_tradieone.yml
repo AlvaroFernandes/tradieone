@@ -17,18 +17,25 @@ jobs:
     
     - run: npm ci && npm run build
     
-    - name: Create correct web.config
+    - name: Add web.config for Azure Node.js stack
       run: |
+        # Simple, effective web.config for static files on Node.js stack
         cat > dist/web.config << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <configuration>
           <system.webServer>
             <staticContent>
               <mimeMap fileExtension=".json" mimeType="application/json" />
+              <mimeMap fileExtension=".js" mimeType="application/javascript" />
+              <mimeMap fileExtension=".css" mimeType="text/css" />
+              <mimeMap fileExtension=".svg" mimeType="image/svg+xml" />
+              <mimeMap fileExtension=".png" mimeType="image/png" />
+              <mimeMap fileExtension=".ico" mimeType="image/x-icon" />
             </staticContent>
             <rewrite>
               <rules>
-                <rule name="SPA" stopProcessing="true">
+                <!-- SPA routing - everything goes to index.html -->
+                <rule name="SPA Routes" stopProcessing="true">
                   <match url=".*" />
                   <conditions logicalGrouping="MatchAll">
                     <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
@@ -38,46 +45,65 @@ jobs:
                 </rule>
               </rules>
             </rewrite>
+            <httpProtocol>
+              <customHeaders>
+                <remove name="X-Powered-By" />
+              </customHeaders>
+            </httpProtocol>
           </system.webServer>
         </configuration>
         EOF
+        echo "✅ web.config created"
     
-    - name: Create CLEAN deployment package
+    - name: Deploy to Azure
       run: |
-        echo "📦 Creating clean deployment package..."
+        echo "🚀 Deploying to Azure..."
         
-        # Create a TEMP folder with ONLY the built files
-        mkdir -p deploy_temp
-        cp -r dist/* deploy_temp/
+        cd dist
         
-        # Make sure we have the correct files
-        echo "Files in deploy_temp:"
-        ls -la deploy_temp/
+        echo "📦 Creating deployment package..."
+        zip -r app.zip .
         
-        # Create zip from temp folder
-        cd deploy_temp
-        zip -r ../deploy.zip .
-        
-        echo "✅ Clean package created"
-    
-    - name: Deploy CLEAN package
-      run: |
-        echo "🚀 Deploying clean package..."
-        
+        echo "📤 Uploading..."
         curl -X POST \
           -u '$TradieOne:n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu' \
           https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net/api/zipdeploy \
-          --data-binary @deploy.zip
+          --data-binary @app.zip
         
         echo ""
-        echo "✅ Clean deployment sent!"
+        echo "✅ Deployment complete!"
     
-    - name: Verify cleanup worked
+    - name: Verify deployment
       run: |
-        echo "🔍 Verifying deployment..."
-        sleep 10
+        echo "🔍 Testing deployed site..."
+        echo "Waiting 20 seconds for Azure to process..."
+        sleep 20
         
-        echo "Testing Azure URL..."
-        curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" \
-          https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net \
-          --max-time 15 || echo "Still processing..."
+        URL="https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+        echo "Testing: $URL"
+        
+        # Try with detailed output
+        STATUS=$(curl -s -o /tmp/response.html -w "%{http_code}" "$URL" --max-time 30)
+        echo "HTTP Status: $STATUS"
+        
+        if [ "$STATUS" -eq 200 ]; then
+          echo "🎉 SUCCESS! Site is live!"
+          echo "Page title:"
+          grep -o "<title>[^<]*</title>" /tmp/response.html || echo "No title tag found"
+          echo ""
+          echo "🌐 Your site: $URL"
+          echo "🔗 Custom domain: https://app.tradieone.com"
+        elif [ "$STATUS" -eq 403 ]; then
+          echo "⚠️  Got 403 - Forbidden"
+          echo "First 200 chars of response:"
+          head -c 200 /tmp/response.html
+          echo ""
+          echo "This might be a permissions issue with web.config"
+        elif [ "$STATUS" -eq 404 ]; then
+          echo "⚠️  Got 404 - Not Found"
+          echo "Azure might still be using old files. Try accessing:"
+          echo "$URL/index.html"
+        else
+          echo "⏳ Got HTTP $STATUS - Azure might still be processing"
+          echo "Try accessing manually in 1-2 minutes"
+        fi
