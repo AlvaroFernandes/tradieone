@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AUTH_ENDPOINTS } from '@/config/auth';
+import { AUTH_ENDPOINTS } from "../config/auth"
 
 /**
  * Log out the current user.

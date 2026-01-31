@@ -10,7 +10,7 @@ import {
   UserCheck,
   Clock,
 } from "lucide-react";
-import logo from '@/assets/logo.png';
+import logo from '../assets/logo.png';
 
 const AppSidebar = () => {
   const navigate = useNavigate();

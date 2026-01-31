@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { getProfile, updateProfile } from '@/services/UserService';
-import type { UserProfile } from '@/services/UserService';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import { getProfile, updateProfile } from '../services/UserService';
+import type { UserProfile } from '../services/UserService';
 
 const UserProfilePage = () => {
   const [profile, setProfile] = useState<UserProfile>({});
