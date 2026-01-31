@@ -17,43 +17,111 @@ jobs:
     
     - run: npm ci && npm run build
     
-    - name: Add web.config
+    - name: Debug - Check build output
       run: |
-        echo '<?xml version="1.0"?>
-        <configuration><system.webServer>
-        <rewrite><rules><rule name="SPA"><match url=".*"/>
-        <conditions><add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true"/>
-        <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true"/></conditions>
-        <action type="Rewrite" url="/index.html"/></rule></rules></rewrite>
-        </system.webServer></configuration>' > dist/web.config
+        echo "📁 Build output check:"
+        echo "Files in dist folder:"
+        ls -la dist/
+        echo ""
+        echo "Checking index.html:"
+        [ -f "dist/index.html" ] && echo "✅ index.html exists" || echo "❌ index.html missing"
+        echo "First line of index.html:"
+        head -1 dist/index.html
+    
+    - name: Create CORRECT web.config
+      run: |
+        # Complete, valid web.config
+        cat > dist/web.config << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <configuration>
+          <system.webServer>
+            <staticContent>
+              <mimeMap fileExtension=".json" mimeType="application/json" />
+              <mimeMap fileExtension=".webmanifest" mimeType="application/manifest+json" />
+            </staticContent>
+            <rewrite>
+              <rules>
+                <rule name="SPA" stopProcessing="true">
+                  <match url=".*" />
+                  <conditions logicalGrouping="MatchAll">
+                    <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+                    <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+                  </conditions>
+                  <action type="Rewrite" url="/index.html" />
+                </rule>
+              </rules>
+            </rewrite>
+            <httpProtocol>
+              <customHeaders>
+                <remove name="X-Powered-By" />
+              </customHeaders>
+            </httpProtocol>
+          </system.webServer>
+        </configuration>
+        EOF
+        
+        echo "✅ Valid web.config created"
     
     - name: Deploy
       run: |
+        echo "🚀 Starting deployment..."
         cd dist
+        
+        echo "📦 Files to deploy:"
+        ls -la
+        
+        echo ""
+        echo "📄 web.config verification:"
+        head -10 web.config
+        echo "..."
+        tail -5 web.config
+        
+        # Create zip
         zip -r app.zip .
         
-        echo "Deploying with publish profile credentials..."
+        echo ""
+        echo "📤 Deploying to Azure..."
         
-        # Deploy - this already worked!
+        # Deploy
         curl -X POST \
           -u '$TradieOne:n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu' \
           https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net/api/zipdeploy \
           --data-binary @app.zip
         
         echo ""
-        echo "✅ Deployment successful!"
-        echo "🌐 Visit your app: https://app.tradieone.com"
-        echo "🌐 Azure URL: https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+        echo "✅ Deployment command sent!"
     
-    - name: Test deployment
+    - name: Restart App Service (if needed)
       run: |
-        echo "Testing deployed app..."
-        sleep 3
+        echo "🔄 Restarting App Service..."
+        # Using Azure CLI if you have credentials
+        # az webapp restart --name TradieOne --resource-group appsvc_linux_australiaeast
+        echo "If app still shows default page, manually restart in Azure Portal"
+    
+    - name: Verify deployment
+      run: |
+        echo "🔍 Verifying deployment..."
+        echo "Waiting 10 seconds for Azure to process..."
+        sleep 10
         
-        curl -s -o /dev/null -w "Azure URL: %{http_code}\n" \
-          https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net \
-          --max-time 10 || echo "Still starting..."
+        echo ""
+        echo "Testing Azure URL..."
+        AZURE_URL="https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+        AZURE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$AZURE_URL" --max-time 15 || echo "000")
+        echo "HTTP Status: $AZURE_STATUS"
         
-        curl -s -o /dev/null -w "Custom Domain: %{http_code}\n" \
-          https://app.tradieone.com \
-          --max-time 10 || echo "Still starting..."
+        if [ "$AZURE_STATUS" -eq 200 ]; then
+          echo "✅ Azure URL is serving your app!"
+          echo "Content preview:"
+          curl -s "$AZURE_URL" | grep -o "<title>[^<]*</title>" || echo "Could not get title"
+        elif [ "$AZURE_STATUS" -eq 403 ] || [ "$AZURE_STATUS" -eq 404 ]; then
+          echo "⚠️  Got $AZURE_STATUS - Checking if web.config is working..."
+          echo "Try accessing: $AZURE_URL/index.html"
+        else
+          echo "⚠️  Status $AZURE_STATUS - App might still be starting"
+        fi
+        
+        echo ""
+        echo "🌐 Your URLs:"
+        echo "   Azure: $AZURE_URL"
+        echo "   Custom: https://app.tradieone.com"
