@@ -1,6 +1,8 @@
 name: Deploy to Azure
 
-on: [push]
+on:
+  push:
+    branches: [ main ]
 
 jobs:
   deploy:
@@ -15,7 +17,7 @@ jobs:
     
     - run: npm ci && npm run build
     
-    - name: Create web.config
+    - name: Add web.config
       run: |
         echo '<?xml version="1.0"?>
         <configuration><system.webServer>
@@ -30,9 +32,9 @@ jobs:
         cd dist
         zip -r app.zip .
         
-        echo "Deploying with EXACT publish profile credentials..."
+        echo "Deploying with publish profile credentials..."
         
-        # These are the EXACT credentials from your publish profile
+        # Deploy - this already worked!
         curl -X POST \
           -u '$TradieOne:n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu' \
           https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net/api/zipdeploy \
@@ -41,3 +43,17 @@ jobs:
         echo ""
         echo "✅ Deployment successful!"
         echo "🌐 Visit your app: https://app.tradieone.com"
+        echo "🌐 Azure URL: https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+    
+    - name: Test deployment
+      run: |
+        echo "Testing deployed app..."
+        sleep 3
+        
+        curl -s -o /dev/null -w "Azure URL: %{http_code}\n" \
+          https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net \
+          --max-time 10 || echo "Still starting..."
+        
+        curl -s -o /dev/null -w "Custom Domain: %{http_code}\n" \
+          https://app.tradieone.com \
+          --max-time 10 || echo "Still starting..."
