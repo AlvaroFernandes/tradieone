@@ -1,44 +1,103 @@
-name: Deploy Static Site to Azure
+name: Deploy Vite App to Azure
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     steps:
-    # Step 1: Get code and setup
-    - uses: actions/checkout@v4
+    # Step 1: Checkout code
+    - name: Checkout code
+      uses: actions/checkout@v4
     
-    - uses: actions/setup-node@v4
+    # Step 2: Setup Node.js
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
         node-version: '22'
+        cache: 'npm'
     
-    # Step 2: Build
-    - run: npm ci && npm run build
-    
-    # Step 3: Prepare deployment package
-    - name: Prepare deployment package
+    # Step 3: Build Vite app
+    - name: Install dependencies and build
       run: |
-        echo "📦 Preparing deployment package..."
+        npm ci
+        npm run build
+        echo "✅ Build completed"
+        echo "Dist folder size: $(du -sh dist/)"
+    
+    # Step 4: Create Node.js server for Azure
+    - name: Create Node.js server for Azure
+      run: |
+        echo "🔄 Creating Node.js server for Azure..."
         
-        # Add package.json to override default Express
+        # Create server.js - Express server for static files
+        cat > dist/server.js << 'EOF'
+        const express = require('express');
+        const path = require('path');
+        
+        const app = express();
+        const port = process.env.PORT || 8080;
+        
+        // Security headers
+        app.use((req, res, next) => {
+          res.removeHeader('X-Powered-By');
+          next();
+        });
+        
+        // Serve static files
+        app.use(express.static(__dirname, {
+          maxAge: '1d',
+          setHeaders: (res, filePath) => {
+            if (path.extname(filePath) === '.html') {
+              res.setHeader('Cache-Control', 'public, max-age=0');
+            }
+          }
+        }));
+        
+        // SPA routing - all other routes to index.html
+        app.get('*', (req, res) => {
+          res.sendFile(path.join(__dirname, 'index.html'));
+        });
+        
+        // Start server
+        app.listen(port, () => {
+          console.log(`TradieOne static site server started on port ${port}`);
+          console.log(`Environment: ${process.env.NODE_ENV || 'production'}`);
+          console.log(`Serving from: ${__dirname}`);
+        });
+        
+        // Handle errors
+        process.on('SIGTERM', () => {
+          console.log('SIGTERM received. Shutting down gracefully...');
+          process.exit(0);
+        });
+        EOF
+        
+        # Create package.json with dependencies
         cat > dist/package.json << 'EOF'
         {
-          "name": "tradieone-static",
+          "name": "tradieone",
           "version": "1.0.0",
+          "description": "TradieOne - Static Frontend",
           "scripts": {
-            "start": "echo 'Static site deployed successfully' && exit 0"
+            "start": "node server.js",
+            "test": "echo \"No tests specified\" && exit 0"
+          },
+          "dependencies": {
+            "express": "^4.18.0"
           },
           "engines": {
             "node": ">=22.0.0"
-          }
+          },
+          "private": true
         }
         EOF
         
-        # Add web.config
+        # Create web.config for Azure IIS (optional but helpful)
         cat > dist/web.config << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <configuration>
@@ -49,16 +108,17 @@ jobs:
               <mimeMap fileExtension=".css" mimeType="text/css" />
               <mimeMap fileExtension=".svg" mimeType="image/svg+xml" />
               <mimeMap fileExtension=".png" mimeType="image/png" />
+              <mimeMap fileExtension=".ico" mimeType="image/x-icon" />
             </staticContent>
             <rewrite>
               <rules>
-                <rule name="SPA" stopProcessing="true">
+                <rule name="SPA Routes" stopProcessing="true">
                   <match url=".*" />
                   <conditions logicalGrouping="MatchAll">
                     <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
                     <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
                   </conditions>
-                  <action type="Rewrite" url="/index.html" />
+                  <action type="Rewrite" url="/" />
                 </rule>
               </rules>
             </rewrite>
@@ -71,67 +131,133 @@ jobs:
         </configuration>
         EOF
         
-        echo "✅ Package prepared"
+        # Create .env file for Azure
+        cat > dist/.env << 'EOF'
+        NODE_ENV=production
+        PORT=8080
+        EOF
+        
+        echo "✅ Server files created in dist folder"
+        echo "📁 Files in dist:"
         ls -la dist/
     
-    # Step 4: Deploy
-    - name: Deploy to Azure
+    # Step 5: Deploy to Azure
+    - name: Deploy to Azure via Kudu
       run: |
-        echo "🚀 Deploying to Azure..."
+        echo "🚀 Starting deployment to Azure..."
         
+        KUDU_URL="https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net"
+        USERNAME='$TradieOne'
+        PASSWORD='n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu'
+        
+        echo "📦 Creating deployment package..."
         cd dist
         
-        # Add a timestamp file to track deployment
-        echo "Deployed at: $(date)" > DEPLOY_TIME.txt
+        # List files for debugging
+        echo "Files to deploy:"
+        find . -type f | head -20
         
         # Create zip
-        zip -r app.zip .
+        zip -r ../deploy.zip . -q
+        ZIP_SIZE=$(du -h ../deploy.zip | cut -f1)
+        echo "Package size: $ZIP_SIZE"
+        
+        # Test connection first
+        echo "🔗 Testing Kudu connection..."
+        if curl -s -f -u "$USERNAME:$PASSWORD" "$KUDU_URL/api/settings" > /dev/null; then
+          echo "✅ Kudu connection successful"
+        else
+          echo "❌ Kudu connection failed"
+          exit 1
+        fi
         
         # Deploy
-        curl -X POST \
-          -u '$TradieOne:n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu' \
-          https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net/api/zipdeploy \
-          --data-binary @app.zip
+        echo "📤 Uploading deployment package..."
+        HTTP_CODE=$(curl -X POST \
+          -u "$USERNAME:$PASSWORD" \
+          "$KUDU_URL/api/zipdeploy" \
+          --data-binary @../deploy.zip \
+          -w "%{http_code}" \
+          -o /tmp/deploy-response.txt \
+          --silent)
         
-        echo ""
-        echo "✅ Deployment sent!"
-    
-    # Step 5: Verify
-    - name: Verify deployment
-      run: |
-        echo "🔍 Verifying deployment..."
-        echo "Waiting 30 seconds for Azure to process..."
-        sleep 30
+        echo "📡 HTTP Response Code: $HTTP_CODE"
         
-        URL="https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
-        
-        echo "Testing: $URL"
-        
-        # Get full response to see what's being served
-        curl -s -o /tmp/full_response.html -w "HTTP Status: %{http_code}\n" \
-          "$URL" --max-time 30
-        
-        echo ""
-        echo "=== RESPONSE ANALYSIS ==="
-        echo "Content-Type:"
-        curl -s -I "$URL" | grep -i "content-type" || echo "Not found"
-        
-        echo ""
-        echo "X-Powered-By header:"
-        curl -s -I "$URL" | grep -i "x-powered-by" || echo "Not present (good!)"
-        
-        echo ""
-        echo "First 500 chars of response:"
-        head -c 500 /tmp/full_response.html
-        echo ""
-        
-        # Check if it's our app or default Azure
-        if grep -q "Express" /tmp/full_response.html; then
-          echo "❌ Still showing default Express.js page"
-          echo "Try accessing: $URL/index.html"
-        elif grep -q "<!doctype html>" /tmp/full_response.html; then
-          echo "✅ Serving your Vite app!"
-          echo "🌐 Visit: $URL"
+        if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+          echo "✅ Deployment successful!"
+          echo "Response: $(cat /tmp/deploy-response.txt | head -100)"
+          
+          # Cleanup
+          rm -f ../deploy.zip
         else
-          echo "⚠️  Unknown response"
+          echo "❌ Deployment failed with HTTP $HTTP_CODE"
+          echo "Error: $(cat /tmp/deploy-response.txt)"
+          exit 1
         fi
+        
+        echo ""
+        echo "🌐 Your app URLs:"
+        echo "   Azure: https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+        echo "   Custom: https://app.tradieone.com"
+    
+    # Step 6: Wait and verify
+    - name: Wait for Azure to start
+      run: |
+        echo "⏳ Waiting for Azure to start the app..."
+        echo "This can take 2-3 minutes for Node.js to start..."
+        sleep 60  # Wait 1 minute
+        
+        echo "Checking app status every 30 seconds..."
+        
+        # Try multiple times
+        for i in {1..6}; do
+          echo ""
+          echo "Check attempt $i/6..."
+          
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net" \
+            --max-time 30 || echo "000")
+          
+          echo "HTTP Status: $STATUS"
+          
+          if [ "$STATUS" -eq 200 ]; then
+            echo "🎉 SUCCESS! Your app is live!"
+            echo "Fetching page title..."
+            curl -s "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net" | \
+              grep -o "<title>[^<]*</title>" || echo "Could not get title"
+            exit 0
+          elif [ "$STATUS" -eq 503 ] || [ "$STATUS" -eq 502 ]; then
+            echo "⏳ App still starting (common for Node.js)..."
+            sleep 30
+          elif [ "$STATUS" -eq 000 ]; then
+            echo "🔌 Cannot connect (might be restarting)..."
+            sleep 30
+          else
+            echo "⚠️  Got HTTP $STATUS - waiting..."
+            sleep 30
+          fi
+        done
+        
+        echo "❌ App not responding after 3 minutes"
+        echo "Please check:"
+        echo "1. Azure Portal → TradieOne → Log stream"
+        echo "2. Wait 5 more minutes and try again"
+        echo "3. Check Azure Portal → TradieOne → Configuration → General settings"
+    
+    # Step 7: Check logs if available
+    - name: Check deployment status
+      if: always()
+      run: |
+        echo "📊 Deployment Summary:"
+        echo "======================"
+        echo "App: TradieOne"
+        echo "URL: https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+        echo "Custom Domain: https://app.tradieone.com"
+        echo ""
+        echo "Next steps:"
+        echo "1. If app shows 503, wait 5 minutes and refresh"
+        echo "2. Check Azure Portal → Log stream for startup errors"
+        echo "3. Verify Azure configuration:"
+        echo "   - Stack: Node.js 22-lts"
+        echo "   - Startup command: (empty - uses package.json start script)"
+        echo "   - App settings: SCM_DO_BUILD_DURING_DEPLOYMENT=false"
