@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path/win32'
+import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
@@ -12,16 +12,16 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-        }
-      }
-    }
+        },
+      },
+    },
   },
   server: {
-    port: 3000
+    port: 3000,
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, 'src'),
     },
   },
 })
