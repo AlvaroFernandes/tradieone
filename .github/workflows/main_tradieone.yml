@@ -1,4 +1,4 @@
-name: Deploy to Azure
+name: Deploy Static Site to Azure
 
 on:
   push:
@@ -9,17 +9,36 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    # Step 1: Get code and setup
     - uses: actions/checkout@v4
     
     - uses: actions/setup-node@v4
       with:
         node-version: '22'
     
+    # Step 2: Build
     - run: npm ci && npm run build
     
-    - name: Add web.config for Azure Node.js stack
+    # Step 3: Prepare deployment package
+    - name: Prepare deployment package
       run: |
-        # Simple, effective web.config for static files on Node.js stack
+        echo "📦 Preparing deployment package..."
+        
+        # Add package.json to override default Express
+        cat > dist/package.json << 'EOF'
+        {
+          "name": "tradieone-static",
+          "version": "1.0.0",
+          "scripts": {
+            "start": "echo 'Static site deployed successfully' && exit 0"
+          },
+          "engines": {
+            "node": ">=22.0.0"
+          }
+        }
+        EOF
+        
+        # Add web.config
         cat > dist/web.config << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <configuration>
@@ -30,12 +49,10 @@ jobs:
               <mimeMap fileExtension=".css" mimeType="text/css" />
               <mimeMap fileExtension=".svg" mimeType="image/svg+xml" />
               <mimeMap fileExtension=".png" mimeType="image/png" />
-              <mimeMap fileExtension=".ico" mimeType="image/x-icon" />
             </staticContent>
             <rewrite>
               <rules>
-                <!-- SPA routing - everything goes to index.html -->
-                <rule name="SPA Routes" stopProcessing="true">
+                <rule name="SPA" stopProcessing="true">
                   <match url=".*" />
                   <conditions logicalGrouping="MatchAll">
                     <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
@@ -53,57 +70,68 @@ jobs:
           </system.webServer>
         </configuration>
         EOF
-        echo "✅ web.config created"
+        
+        echo "✅ Package prepared"
+        ls -la dist/
     
+    # Step 4: Deploy
     - name: Deploy to Azure
       run: |
         echo "🚀 Deploying to Azure..."
         
         cd dist
         
-        echo "📦 Creating deployment package..."
+        # Add a timestamp file to track deployment
+        echo "Deployed at: $(date)" > DEPLOY_TIME.txt
+        
+        # Create zip
         zip -r app.zip .
         
-        echo "📤 Uploading..."
+        # Deploy
         curl -X POST \
           -u '$TradieOne:n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu' \
           https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net/api/zipdeploy \
           --data-binary @app.zip
         
         echo ""
-        echo "✅ Deployment complete!"
+        echo "✅ Deployment sent!"
     
+    # Step 5: Verify
     - name: Verify deployment
       run: |
-        echo "🔍 Testing deployed site..."
-        echo "Waiting 20 seconds for Azure to process..."
-        sleep 20
+        echo "🔍 Verifying deployment..."
+        echo "Waiting 30 seconds for Azure to process..."
+        sleep 30
         
         URL="https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
+        
         echo "Testing: $URL"
         
-        # Try with detailed output
-        STATUS=$(curl -s -o /tmp/response.html -w "%{http_code}" "$URL" --max-time 30)
-        echo "HTTP Status: $STATUS"
+        # Get full response to see what's being served
+        curl -s -o /tmp/full_response.html -w "HTTP Status: %{http_code}\n" \
+          "$URL" --max-time 30
         
-        if [ "$STATUS" -eq 200 ]; then
-          echo "🎉 SUCCESS! Site is live!"
-          echo "Page title:"
-          grep -o "<title>[^<]*</title>" /tmp/response.html || echo "No title tag found"
-          echo ""
-          echo "🌐 Your site: $URL"
-          echo "🔗 Custom domain: https://app.tradieone.com"
-        elif [ "$STATUS" -eq 403 ]; then
-          echo "⚠️  Got 403 - Forbidden"
-          echo "First 200 chars of response:"
-          head -c 200 /tmp/response.html
-          echo ""
-          echo "This might be a permissions issue with web.config"
-        elif [ "$STATUS" -eq 404 ]; then
-          echo "⚠️  Got 404 - Not Found"
-          echo "Azure might still be using old files. Try accessing:"
-          echo "$URL/index.html"
+        echo ""
+        echo "=== RESPONSE ANALYSIS ==="
+        echo "Content-Type:"
+        curl -s -I "$URL" | grep -i "content-type" || echo "Not found"
+        
+        echo ""
+        echo "X-Powered-By header:"
+        curl -s -I "$URL" | grep -i "x-powered-by" || echo "Not present (good!)"
+        
+        echo ""
+        echo "First 500 chars of response:"
+        head -c 500 /tmp/full_response.html
+        echo ""
+        
+        # Check if it's our app or default Azure
+        if grep -q "Express" /tmp/full_response.html; then
+          echo "❌ Still showing default Express.js page"
+          echo "Try accessing: $URL/index.html"
+        elif grep -q "<!doctype html>" /tmp/full_response.html; then
+          echo "✅ Serving your Vite app!"
+          echo "🌐 Visit: $URL"
         else
-          echo "⏳ Got HTTP $STATUS - Azure might still be processing"
-          echo "Try accessing manually in 1-2 minutes"
+          echo "⚠️  Unknown response"
         fi
