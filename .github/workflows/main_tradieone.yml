@@ -100,45 +100,27 @@ jobs:
         
         # Deploy using Kudu ZIP API
         echo "📤 Uploading to Azure..."
-        
-        RESPONSE=$(curl -s -X POST \
+
+        set +e
+        HTTP_STATUS=$(curl -S -X POST \
           -u "$AZURE_WEBAPP_USERNAME:$AZURE_WEBAPP_PASSWORD" \
-          "${{ env.AZURE_WEBAPP_URL }}/api/zipdeploy" \
+          -H "Content-Type: application/zip" \
+          "https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net/api/zipdeploy?isAsync=true" \
           --data-binary @../deploy.zip \
-          -w "\nHTTP_STATUS:%{http_code}" \
-          --fail-with-body)
-        
-        HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
-        
-        if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 201 ]; then
-          echo "✅ Deployment successful! (HTTP $HTTP_STATUS)"
-          
-          # Cleanup
-          rm -f ../deploy.zip
-          
-          echo ""
-          echo "🎉 Deployment complete!"
-          echo "🌐 Azure URL: https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net"
-          echo "🔗 Custom Domain: ${{ env.CUSTOM_DOMAIN }}"
-          
-          # Verify deployment
-          echo ""
-          echo "🔍 Verifying deployment..."
-          sleep 3
-          for url in \
-            "https://tradieone-gpefeegnfqf5dwau.australiaeast-01.azurewebsites.net" \
-            "${{ env.CUSTOM_DOMAIN }}"
-          do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$url" --max-time 10 || echo "000")
-            if [ "$STATUS" -eq 200 ]; then
-              echo "✅ $url - HTTP $STATUS"
-            else
-              echo "⚠️  $url - HTTP $STATUS (may still be starting)"
-            fi
-          done
+          -o /tmp/kudu_body.txt \
+          -w "%{http_code}")
+        CURL_EXIT=$?
+        set -e
+
+        echo "HTTP_STATUS=$HTTP_STATUS (curl_exit=$CURL_EXIT)"
+        echo "---- Kudu response body ----"
+        cat /tmp/kudu_body.txt
+        echo "----------------------------"
+
+        if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+          echo "✅ Deployment request accepted"
         else
-          echo "❌ Deployment failed (HTTP $HTTP_STATUS)"
-          echo "Response: $RESPONSE"
+          echo "❌ Deployment failed"
           exit 1
         fi
     
