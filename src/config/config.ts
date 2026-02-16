@@ -21,6 +21,30 @@ export const API_ENDPOINTS = {
     updateClient: `${API_BASE_URL}/api/Clients/`,
     deleteClient: (id: string) => `${API_BASE_URL}/api/Clients/id=${id}`,
   },
+  employees: {
+    // List endpoint expects query params: pageNumber, pageSize, keyword
+    list: `${API_BASE_URL}/api/Employees/GetList`,
+    employeeDetail: (id: string) => `${API_BASE_URL}/api/Employees/${id}`,
+    addEmployee: `${API_BASE_URL}/api/Employees`,
+    updateEmployee: `${API_BASE_URL}/api/Employees/`,
+    deleteEmployee: (id: string) => `${API_BASE_URL}/api/Employees/id=${id}`,
+  },
+  contractors: {
+    // List endpoint expects query params: pageNumber, pageSize, keyword
+    list: `${API_BASE_URL}/api/Contractors/GetList`,
+    contractorDetail: (id: string) => `${API_BASE_URL}/api/Contractors/${id}`,
+    addContractor: `${API_BASE_URL}/api/Contractors`,
+    updateContractor: `${API_BASE_URL}/api/Contractors/`,
+    deleteContractor: (id: string) => `${API_BASE_URL}/api/Contractors/id=${id}`,
+  },
+  jobs: {
+    // List endpoint expects query params: pageNumber, pageSize, keyword
+    list: `${API_BASE_URL}/api/Jobs/GetList`,
+    jobDetail: (id: string) => `${API_BASE_URL}/api/Jobs/${id}`,
+    addJob: `${API_BASE_URL}/api/Jobs`,
+    updateJob: `${API_BASE_URL}/api/Jobs/`,
+    deleteJob: (id: string) => `${API_BASE_URL}/api/Jobs/id=${id}`,
+  },
   projects: {
     // REST endpoints for Project resource (list via GET, create POST, update PUT, delete DELETE)
     list: `${API_BASE_URL}/api/project`,

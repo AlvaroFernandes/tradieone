@@ -95,20 +95,11 @@ const ClientsPage = () => {
     };
   }, [searchTerms]);
 
-  // Filter clients client-side as a fallback
-    const filteredClients = clients.filter((client) => { 
-    const term = searchTerms.toLowerCase();
-    return (
-      client.clientName?.toLowerCase().includes(term) ||
-      client.contactPerson?.toLowerCase().includes(term) ||
-      client.email?.toLowerCase().includes(term) ||
-      client.phone?.toLowerCase().includes(term) ||
-      client.addressLine1?.toLowerCase().includes(term) ||
-      client.addressLine2?.toLowerCase().includes(term) ||
-      client.city?.toLowerCase().includes(term) ||
-      client.state?.toLowerCase().includes(term) ||
-      client.postcode?.toLowerCase().includes(term)
-    );
+  // Filter clients client-side as a fallback (name-based search)
+  const filteredClients = clients.filter((client) => {
+    const term = searchTerms.toLowerCase().trim();
+    if (!term) return true;
+    return (client.clientName || "").toLowerCase().includes(term);
   });
 
     // Log filtered result once per filter update (not per item)
@@ -353,7 +344,7 @@ const ClientsPage = () => {
               size={18}
             />
             <Input
-              placeholder="Search Clients..."
+              placeholder="Search clients by name..."
               value={searchTerms}
               onChange={(e) => setSearchTerms(e.target.value)}
               className="pl-9"
