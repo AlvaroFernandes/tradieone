@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import StatsCards from "@/components/StatsCards";
 import ModalComponent from "@/components/ModalComponent";
 import EmployeeForm from "@/components/EmployeeForm";
@@ -17,7 +18,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MapPin, Phone, Search, MoreVertical, Mail, Briefcase } from "lucide-react";
-import { getEmployees } from "@/services/EmployeesService";
+import { deleteEmployee, getEmployees } from "@/services/EmployeesService";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 type EmployeeTableRow = {
   id?: string | number;
@@ -38,13 +40,10 @@ type EmployeeTableRow = {
 };
 
 const EmployeesPage = () => {
+  const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerms, setSearchTerms] = useState("");
-  const [employees, setEmployees] = useState<EmployeeTableRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const initialLoadRef = useRef(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const debouncedSearch = useDebouncedValue(searchTerms, 300);
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeTableRow | null>(null);
@@ -53,33 +52,25 @@ const EmployeesPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeTableRow | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      (async () => {
-        setLoading(true);
-        try {
-          const res = await getEmployees({ pageNumber: 1, pageSize: 50, keyword: searchTerms });
-          const items = Array.isArray(res) ? res : res?.items ?? [];
-          if (!mounted) return;
-          setEmployees(items);
-        } catch (err) {
-          console.error("Failed to load employees", err);
-        } finally {
-          if (mounted) setLoading(false);
-          if (initialLoadRef.current) {
-            initialLoadRef.current = false;
-            setPageLoading(false);
-          }
-        }
-      })();
-    }, 300);
+  const employeesQuery = useQuery({
+    queryKey: ["employees", debouncedSearch],
+    queryFn: async () => {
+      const res = await getEmployees({ pageNumber: 1, pageSize: 50, keyword: debouncedSearch });
+      return (Array.isArray(res) ? res : res?.items ?? []) as EmployeeTableRow[];
+    },
+    placeholderData: (previousData) => previousData,
+  });
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [searchTerms, refreshKey]);
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: (id: string | number) => deleteEmployee(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+
+  const employees = employeesQuery.data ?? [];
+  const loading = employeesQuery.isFetching;
+  const pageLoading = employeesQuery.isPending && !employeesQuery.data;
 
   const filteredEmployees = employees.filter((employee) => {
     const term = searchTerms.toLowerCase().trim();
@@ -248,7 +239,7 @@ const EmployeesPage = () => {
             <ModalComponent open={modalOpen} onOpenChange={setModalOpen} title="Add New Employee" site="Employees" size="w80" type="add">
               <EmployeeForm
                 onCancel={() => setModalOpen(false)}
-                onSaved={() => setRefreshKey((k) => k + 1)}
+                onSaved={() => queryClient.invalidateQueries({ queryKey: ["employees"] })}
               />
             </ModalComponent>
           </div>
@@ -423,8 +414,7 @@ const EmployeesPage = () => {
               onClick={async () => {
                 if (employeeToDelete?.id) {
                   try {
-                    await import("@/services/EmployeesService").then(({ deleteEmployee }) => deleteEmployee(employeeToDelete.id!));
-                    setEmployees((prev) => prev.filter((e) => e.id !== employeeToDelete.id));
+                    await deleteEmployeeMutation.mutateAsync(employeeToDelete.id);
                   } catch (err) {
                     console.error("Failed to delete employee", err);
                   }
@@ -456,7 +446,7 @@ const EmployeesPage = () => {
             type="edit"
             employeeId={selectedEmployee.id}
             initialValues={selectedEmployee as any}
-            onSaved={() => setRefreshKey((k) => k + 1)}
+            onSaved={() => queryClient.invalidateQueries({ queryKey: ["employees"] })}
             onCancel={() => setEditModalOpen(false)}
           />
         )}

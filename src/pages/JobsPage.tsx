@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import StatsCards from "@/components/StatsCards";
 import ModalComponent from "@/components/ModalComponent";
 import JobForm from "@/components/JobForm";
@@ -16,8 +17,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Calendar, MapPin, MoreVertical, Search, Flag } from "lucide-react";
-import { getJobs } from "@/services/JobsService";
+import { deleteJob, getJobs } from "@/services/JobsService";
 import type { Job } from "@/services/JobsService";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 type JobTableRow = Job & {
   // allow API to return additional fields
@@ -25,13 +27,10 @@ type JobTableRow = Job & {
 };
 
 const JobsPage = () => {
+  const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerms, setSearchTerms] = useState("");
-  const [jobs, setJobs] = useState<JobTableRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const initialLoadRef = useRef(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const debouncedSearch = useDebouncedValue(searchTerms, 250);
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobTableRow | null>(null);
@@ -40,33 +39,25 @@ const JobsPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [jobToDelete, setJobToDelete] = useState<JobTableRow | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      (async () => {
-        setLoading(true);
-        try {
-          const res = await getJobs({ pageNumber: 1, pageSize: 100, keyword: searchTerms });
-          const items = Array.isArray(res) ? res : res?.items ?? [];
-          if (!mounted) return;
-          setJobs(items as JobTableRow[]);
-        } catch (err) {
-          console.error("Failed to load jobs", err);
-        } finally {
-          if (mounted) setLoading(false);
-          if (initialLoadRef.current) {
-            initialLoadRef.current = false;
-            setPageLoading(false);
-          }
-        }
-      })();
-    }, 250);
+  const jobsQuery = useQuery({
+    queryKey: ["jobs", debouncedSearch],
+    queryFn: async () => {
+      const res = await getJobs({ pageNumber: 1, pageSize: 100, keyword: debouncedSearch });
+      return (Array.isArray(res) ? res : res?.items ?? []) as JobTableRow[];
+    },
+    placeholderData: (previousData) => previousData,
+  });
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [searchTerms, refreshKey]);
+  const deleteJobMutation = useMutation({
+    mutationFn: (id: string | number) => deleteJob(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+
+  const jobs = jobsQuery.data ?? [];
+  const loading = jobsQuery.isFetching;
+  const pageLoading = jobsQuery.isPending && !jobsQuery.data;
 
   // name-based search (job title)
   const filteredJobs = jobs.filter((j) => {
@@ -198,7 +189,7 @@ const JobsPage = () => {
             <ModalComponent open={modalOpen} onOpenChange={setModalOpen} title="Add New Job" site="Jobs" size="w80" type="add">
               <JobForm
                 onCancel={() => setModalOpen(false)}
-                onSaved={() => setRefreshKey((k) => k + 1)}
+                onSaved={() => queryClient.invalidateQueries({ queryKey: ["jobs"] })}
               />
             </ModalComponent>
           </div>
@@ -337,8 +328,7 @@ const JobsPage = () => {
               onClick={async () => {
                 if (jobToDelete?.id != null) {
                   try {
-                    await import("@/services/JobsService").then(({ deleteJob }) => deleteJob(jobToDelete.id));
-                    setJobs((prev) => prev.filter((x) => x.id !== jobToDelete.id));
+                    await deleteJobMutation.mutateAsync(jobToDelete.id);
                   } catch (err) {
                     console.error("Failed to delete job", err);
                   }
@@ -366,7 +356,7 @@ const JobsPage = () => {
             type="edit"
             jobId={Number(selectedJob.id)}
             initialValues={selectedJob}
-            onSaved={() => setRefreshKey((k) => k + 1)}
+            onSaved={() => queryClient.invalidateQueries({ queryKey: ["jobs"] })}
             onCancel={() => setEditModalOpen(false)}
           />
         )}

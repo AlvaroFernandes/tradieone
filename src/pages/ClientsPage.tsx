@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import StatsCards from "@/components/StatsCards";
 import ModalComponent from "@/components/ModalComponent";
 import ClientForm from "@/components/ClientForm";
@@ -13,11 +14,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getClients } from '@/services/ClientsService';
+import { deleteClient, getClients } from '@/services/ClientsService';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 interface Project {
   status?: string;
@@ -52,48 +54,37 @@ type ClientTableRow = {
 // tableColumns removed (not used) — table columns are defined directly in JSX
 
 const ClientsPage = () => {
-    // State for delete confirmation modal
-    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [clientToDelete, setClientToDelete] = useState<ClientTableRow | null>(null);
+  const queryClient = useQueryClient();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<ClientTableRow | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerms, setSearchTerms] = useState("");
-  const [clients, setClients] = useState<ClientTableRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const initialLoadRef = useRef(true);
+  const debouncedSearch = useDebouncedValue(searchTerms, 300);
   // Modal for viewing client details
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientTableRow | null>(null);
   // Modal for editing client from view modal
   const [editModalOpen, setEditModalOpen] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      (async () => {
-        setLoading(true);
-        try {
-          const res = await getClients({ pageNumber: 1, pageSize: 50, keyword: searchTerms });
-          const items = Array.isArray(res) ? res : res?.items ?? [];
-          if (!mounted) return;
-          setClients(items);
-        } catch (err) {
-          console.error("Failed to load clients", err);
-        } finally {
-          if (mounted) setLoading(false);
-          if (initialLoadRef.current) {
-            initialLoadRef.current = false;
-            setPageLoading(false);
-          }
-        }
-      })();
-    }, 300);
+  const clientsQuery = useQuery({
+    queryKey: ["clients", debouncedSearch],
+    queryFn: async () => {
+      const res = await getClients({ pageNumber: 1, pageSize: 50, keyword: debouncedSearch });
+      return Array.isArray(res) ? res : res?.items ?? [];
+    },
+    placeholderData: (previousData) => previousData,
+  });
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [searchTerms]);
+  const deleteClientMutation = useMutation({
+    mutationFn: (id: string | number) => deleteClient(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+  });
+
+  const clients = (clientsQuery.data ?? []) as ClientTableRow[];
+  const loading = clientsQuery.isFetching;
+  const pageLoading = clientsQuery.isPending && !clientsQuery.data;
 
   // Filter clients client-side as a fallback (name-based search)
   const filteredClients = clients.filter((client) => {
@@ -101,11 +92,6 @@ const ClientsPage = () => {
     if (!term) return true;
     return (client.clientName || "").toLowerCase().includes(term);
   });
-
-    // Log filtered result once per filter update (not per item)
-      useEffect(() => {
-        console.log("Filtered clients count:", filteredClients.length);
-      }, [filteredClients.length]);
 
   // Stats data, with dynamic total clients
   // compute aggregated stats from clients and their projects (if present)
@@ -333,7 +319,10 @@ const ClientsPage = () => {
               size="w80"
               type="add"
             >
-              <ClientForm onCancel={() => setModalOpen(false)} />
+              <ClientForm
+                onCancel={() => setModalOpen(false)}
+                onSaved={() => queryClient.invalidateQueries({ queryKey: ["clients"] })}
+              />
             </ModalComponent>
           </div>
         </CardHeader>
@@ -485,8 +474,7 @@ const ClientsPage = () => {
               onClick={async () => {
                 if (clientToDelete?.id) {
                   try {
-                    await import("@/services/ClientsService").then(({ deleteClient }) => deleteClient(clientToDelete.id!));
-                    setClients((prev) => prev.filter((c) => c.id !== clientToDelete.id));
+                    await deleteClientMutation.mutateAsync(clientToDelete.id);
                   } catch (err) {
                     // TODO: show error toast
                     console.error("Failed to delete client", err);
@@ -514,6 +502,7 @@ const ClientsPage = () => {
             type="edit"
             clientId={selectedClient.id}
             initialValues={selectedClient}
+            onSaved={() => queryClient.invalidateQueries({ queryKey: ["clients"] })}
             onCancel={() => setEditModalOpen(false)}
           />
         )}
@@ -523,4 +512,3 @@ const ClientsPage = () => {
 };
 
 export default ClientsPage;
-

@@ -80,12 +80,13 @@ import type { Client } from "@/services/ClientsService";
 
 interface ClientFormProps {
   onCancel?: () => void;
+  onSaved?: () => void;
   type?: "add" | "edit";
   clientId?: string | number;
   initialValues?: Partial<ClientFormValues>;
 }
 
-const ClientForm: React.FC<ClientFormProps> = ({ onCancel, type = "add", clientId, initialValues }) => {
+const ClientForm: React.FC<ClientFormProps> = ({ onCancel, onSaved, type = "add", clientId, initialValues }) => {
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: defaultValues,
@@ -131,6 +132,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ onCancel, type = "add", clientI
         await createClient(payload);
       }
       form.reset();
+      onSaved?.();
       if (onCancel) onCancel();
     } catch (err) {
       // TODO: handle error (show toast, etc)

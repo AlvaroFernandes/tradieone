@@ -41,12 +41,13 @@ const defaultValues: ProjectFormValues = {
 
 interface ProjectFormProps {
   onCancel?: () => void;
+  onSaved?: () => void;
   type?: "add" | "edit";
   projectId?: string | number;
   initialValues?: Partial<ProjectFormValues> & { id?: string | number };
 }
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ onCancel, type = "add", projectId, initialValues }) => {
+const ProjectForm: React.FC<ProjectFormProps> = ({ onCancel, onSaved, type = "add", projectId, initialValues }) => {
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
     defaultValues,
@@ -91,6 +92,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onCancel, type = "add", proje
         await createProject(values as any);
       }
       form.reset();
+      onSaved?.();
       if (onCancel) onCancel();
     } catch (err) {
       console.error("ProjectForm submit error:", err);

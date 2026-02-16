@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import StatsCards from "@/components/StatsCards";
 import ModalComponent from "@/components/ModalComponent";
 import ContractorForm from "@/components/ContractorForm";
@@ -17,7 +18,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Mail, MapPin, MoreVertical, Phone, Search, Wrench } from "lucide-react";
-import { getContractors } from "@/services/ContractorsService";
+import { deleteContractor, getContractors } from "@/services/ContractorsService";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 type ContractorTableRow = {
   id?: string | number;
@@ -37,13 +39,10 @@ type ContractorTableRow = {
 };
 
 const ContractorsPage = () => {
+  const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerms, setSearchTerms] = useState("");
-  const [contractors, setContractors] = useState<ContractorTableRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const initialLoadRef = useRef(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const debouncedSearch = useDebouncedValue(searchTerms, 300);
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedContractor, setSelectedContractor] = useState<ContractorTableRow | null>(null);
@@ -52,33 +51,25 @@ const ContractorsPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [contractorToDelete, setContractorToDelete] = useState<ContractorTableRow | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      (async () => {
-        setLoading(true);
-        try {
-          const res = await getContractors({ pageNumber: 1, pageSize: 50, keyword: searchTerms });
-          const items = Array.isArray(res) ? res : res?.items ?? [];
-          if (!mounted) return;
-          setContractors(items);
-        } catch (err) {
-          console.error("Failed to load contractors", err);
-        } finally {
-          if (mounted) setLoading(false);
-          if (initialLoadRef.current) {
-            initialLoadRef.current = false;
-            setPageLoading(false);
-          }
-        }
-      })();
-    }, 300);
+  const contractorsQuery = useQuery({
+    queryKey: ["contractors", debouncedSearch],
+    queryFn: async () => {
+      const res = await getContractors({ pageNumber: 1, pageSize: 50, keyword: debouncedSearch });
+      return (Array.isArray(res) ? res : res?.items ?? []) as ContractorTableRow[];
+    },
+    placeholderData: (previousData) => previousData,
+  });
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [searchTerms, refreshKey]);
+  const deleteContractorMutation = useMutation({
+    mutationFn: (id: string | number) => deleteContractor(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["contractors"] });
+    },
+  });
+
+  const contractors = contractorsQuery.data ?? [];
+  const loading = contractorsQuery.isFetching;
+  const pageLoading = contractorsQuery.isPending && !contractorsQuery.data;
 
   const filteredContractors = contractors.filter((c) => {
     const term = searchTerms.toLowerCase().trim();
@@ -240,7 +231,10 @@ const ContractorsPage = () => {
               New Contractor
             </Button>
             <ModalComponent open={modalOpen} onOpenChange={setModalOpen} title="Add New Contractor" site="Contractors" size="w80" type="add">
-              <ContractorForm onCancel={() => setModalOpen(false)} onSaved={() => setRefreshKey((k) => k + 1)} />
+              <ContractorForm
+                onCancel={() => setModalOpen(false)}
+                onSaved={() => queryClient.invalidateQueries({ queryKey: ["contractors"] })}
+              />
             </ModalComponent>
           </div>
         </CardHeader>
@@ -391,8 +385,7 @@ const ContractorsPage = () => {
               onClick={async () => {
                 if (contractorToDelete?.id) {
                   try {
-                    await import("@/services/ContractorsService").then(({ deleteContractor }) => deleteContractor(contractorToDelete.id!));
-                    setContractors((prev) => prev.filter((x) => x.id !== contractorToDelete.id));
+                    await deleteContractorMutation.mutateAsync(contractorToDelete.id);
                   } catch (err) {
                     console.error("Failed to delete contractor", err);
                   }
@@ -420,7 +413,7 @@ const ContractorsPage = () => {
             type="edit"
             contractorId={selectedContractor.id}
             initialValues={selectedContractor as any}
-            onSaved={() => setRefreshKey((k) => k + 1)}
+            onSaved={() => queryClient.invalidateQueries({ queryKey: ["contractors"] })}
             onCancel={() => setEditModalOpen(false)}
           />
         )}

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 import ModalComponent from "@/components/ModalComponent";
 import ProjectForm from "@/components/ProjectForm";
-import { getProjects, deleteProject } from "@/services/ProjectsService";
+import { deleteProject, getProjects } from "@/services/ProjectsService";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 export type ProjectItem = {
   id: number;
@@ -23,7 +25,6 @@ export type ProjectItem = {
   createdBy?: number;
   createdOnUtc?: string;
   lastUpdatedUtc?: string;
-  // Additional fields expected by route handler
   client: string;
   location: string;
   teamSize: number;
@@ -31,10 +32,9 @@ export type ProjectItem = {
 };
 
 export function ProjectsPage({ onViewProject }: { onViewProject?: (project: ProjectItem) => void }) {
-  const [projects, setProjects] = useState<ProjectItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [pageLoading, setPageLoading] = useState(true);
+  const debouncedSearch = useDebouncedValue(search, 200);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
@@ -43,30 +43,25 @@ export function ProjectsPage({ onViewProject }: { onViewProject?: (project: Proj
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<ProjectItem | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      (async () => {
-        setLoading(true);
-        try {
-          const res = await getProjects({ pageNumber: 1, pageSize: 200, keyword: search });
-          const items = Array.isArray(res) ? res : res?.items ?? [];
-          if (!mounted) return;
-          setProjects(items);
-        } catch (err) {
-          console.error("Failed to load projects", err);
-        } finally {
-          if (mounted) setLoading(false);
-          if (pageLoading) setPageLoading(false);
-        }
-      })();
-    }, 200);
+  const projectsQuery = useQuery({
+    queryKey: ["projects", debouncedSearch],
+    queryFn: async () => {
+      const res = await getProjects({ pageNumber: 1, pageSize: 200, keyword: debouncedSearch });
+      return Array.isArray(res) ? res : res?.items ?? [];
+    },
+    placeholderData: (previousData) => previousData,
+  });
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [search]);
+  const deleteProjectMutation = useMutation({
+    mutationFn: (id: number) => deleteProject(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+
+  const projects = (projectsQuery.data ?? []) as ProjectItem[];
+  const loading = projectsQuery.isFetching;
+  const pageLoading = projectsQuery.isPending && !projectsQuery.data;
 
   const filtered = projects.filter((p) => {
     const t = search.toLowerCase();
@@ -103,7 +98,10 @@ export function ProjectsPage({ onViewProject }: { onViewProject?: (project: Proj
               </div>
               <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setModalOpen(true)}>New Project</Button>
               <ModalComponent open={modalOpen} onOpenChange={setModalOpen} title="Add Project" size="w80" type="add">
-                <ProjectForm onCancel={() => setModalOpen(false)} />
+                <ProjectForm
+                  onCancel={() => setModalOpen(false)}
+                  onSaved={() => queryClient.invalidateQueries({ queryKey: ["projects"] })}
+                />
               </ModalComponent>
             </div>
           </div>
@@ -205,7 +203,13 @@ export function ProjectsPage({ onViewProject }: { onViewProject?: (project: Proj
 
       <ModalComponent open={editOpen} onOpenChange={setEditOpen} title={selectedProject ? `Edit: ${selectedProject.name}` : "Edit Project"} size="w80" type="edit">
         {selectedProject && (
-          <ProjectForm type="edit" projectId={selectedProject.id} initialValues={selectedProject as any} onCancel={() => setEditOpen(false)} />
+          <ProjectForm
+            type="edit"
+            projectId={selectedProject.id}
+            initialValues={selectedProject as any}
+            onSaved={() => queryClient.invalidateQueries({ queryKey: ["projects"] })}
+            onCancel={() => setEditOpen(false)}
+          />
         )}
       </ModalComponent>
 
@@ -214,18 +218,22 @@ export function ProjectsPage({ onViewProject }: { onViewProject?: (project: Proj
           <p className="text-gray-900">Project: <strong>{projectToDelete?.name}</strong></p>
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
-            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={async () => {
-              if (projectToDelete?.id) {
-                try {
-                  await deleteProject(projectToDelete.id);
-                  setProjects((prev) => prev.filter((x) => x.id !== projectToDelete.id));
-                } catch (err) {
-                  console.error("Failed to delete project", err);
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={async () => {
+                if (projectToDelete?.id) {
+                  try {
+                    await deleteProjectMutation.mutateAsync(projectToDelete.id);
+                  } catch (err) {
+                    console.error("Failed to delete project", err);
+                  }
                 }
-              }
-              setDeleteOpen(false);
-              setProjectToDelete(null);
-            }}>Delete</Button>
+                setDeleteOpen(false);
+                setProjectToDelete(null);
+              }}
+            >
+              Delete
+            </Button>
           </div>
         </div>
       </ModalComponent>
