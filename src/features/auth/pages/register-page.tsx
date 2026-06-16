@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils'
 
 interface RegisterResponse {
   token: string
-  user: AuthUser
 }
 
 export default function RegisterPage() {
@@ -40,18 +39,30 @@ export default function RegisterPage() {
   })
 
   const { mutate: createAccount, isPending } = useMutation({
-    mutationFn: ({ terms: _terms, ...payload }: RegisterFormData) =>
-      api.post<RegisterResponse>('/auth/register', payload).then((r) => r.data),
-    onSuccess: ({ token, user }) => {
-      setAuth(token, user)
-      navigate('/onboarding')
+    mutationFn: ({ email, password, businessName, firstName, lastName }: RegisterFormData) => {
+      localStorage.setItem(
+        'tradieone-pending-profile',
+        JSON.stringify({ businessName, firstName, lastName }),
+      )
+return api.post<RegisterResponse>('/signup', { username: email, password }).then((r) => r.data)
+    },
+    onSuccess: ({ token }, { email, firstName, lastName }) => {
+      setAuth(token, { id: '', name: `${firstName} ${lastName}`, email, role: 'user' })
+      navigate('/token')
     },
     onError: (error) => {
-      toast.error(
-        isAxiosError(error)
-          ? (error.response?.data?.message ?? 'Registration failed. Please try again.')
-          : 'Something went wrong. Please try again.',
-      )
+      if (isAxiosError(error)) {
+        console.error('Signup API error:', error.response?.data)
+        const data = error.response?.data
+        const msg =
+          data?.message ??
+          data?.title ??
+          Object.values(data?.errors ?? {}).flat().join(' ') ??
+          'Registration failed. Please try again.'
+        toast.error(String(msg))
+      } else {
+        toast.error('Something went wrong. Please try again.')
+      }
     },
   })
 

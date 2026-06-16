@@ -3,6 +3,14 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.1.0] - 2026-06-16
+
+### ✨ Features
+
+- Sign up flow: form sends only `{ username, password }` to `POST /signup` on `authgen.azurewebsites.net`; remaining profile fields (`businessName`, `firstName`, `lastName`) are persisted to `localStorage` under `tradieone-pending-profile`
+- Token page (`/token`) — protected route that displays the JWT returned by the signup endpoint after successful registration
+- API error handler on signup now surfaces the actual server error (`message`, `title`, or `errors` object) via Sonner toast instead of a generic fallback
+
 ## [1.0.0] - 2026-06-06
 
 ### ✨ Features
