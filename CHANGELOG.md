@@ -3,6 +3,21 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.3.0] - 2026-06-16
+
+### ✨ Features
+
+- Onboarding Step 1 — "Business Identity" screen implementing the Figma design: logo upload, ABN, business email, business phone, GST registered toggle, and full address fields (address line, suburb, state dropdown, postcode)
+- After completing Step 1, calls `POST /api/Users` on `tdoserver.azurewebsites.net` with firstName/lastName from localStorage + all business details; stores returned `tenantId` in Zustand store
+- Sign up now redirects to `/onboarding` instead of `/token` after receiving the auth token
+
+### 🏗️ Build
+
+- Added `tdoApi` axios client for `tdoserver.azurewebsites.net` (shared interceptors with `api`)
+- Added `VITE_TDO_API_BASE_URL` env var (falls back to the Azure URL if not set)
+- Added `tenantId` and `setTenantId` to the Zustand auth store (persisted to localStorage)
+- Added `onboardingStep1Schema` and `OnboardingStep1Data` type to `auth.types.ts`
+
 ## [1.2.0] - 2026-06-16
 
 ### ✨ Features

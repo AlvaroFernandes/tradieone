@@ -30,9 +30,23 @@ export const resetPasswordSchema = z
     path: ['confirmPassword'],
   })
 
+export const onboardingStep1Schema = z.object({
+  abn: z.string().min(11, 'Enter a valid 11-digit ABN'),
+  businessEmail: z.email('Invalid email address'),
+  businessPhone: z.string().min(10, 'Enter a valid phone number'),
+  isGstRegistered: z.boolean(),
+  addressLine1: z.string().min(1, 'Address is required'),
+  suburb: z.string().min(1, 'Suburb is required'),
+  state: z.string().min(1, 'State is required'),
+  postcode: z
+    .string()
+    .length(4, 'Postcode must be 4 digits')
+    .regex(/^\d{4}$/, 'Invalid postcode'),
+})
+
 export type LoginFormData = z.infer<typeof loginSchema>
 export type RegisterFormData = z.infer<typeof registerSchema>
-// terms is a checkbox — the API only receives the other fields
 export type RegisterPayload = Omit<RegisterFormData, 'terms'>
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>
+export type OnboardingStep1Data = z.infer<typeof onboardingStep1Schema>

@@ -48,7 +48,7 @@ return api.post<RegisterResponse>('/signup', { username: email, password }).then
     },
     onSuccess: ({ token }, { email, firstName, lastName }) => {
       setAuth(token, { id: '', name: `${firstName} ${lastName}`, email, role: 'user' })
-      navigate('/token')
+      navigate('/onboarding')
     },
     onError: (error) => {
       if (isAxiosError(error)) {
