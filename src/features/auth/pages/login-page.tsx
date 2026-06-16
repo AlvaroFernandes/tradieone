@@ -7,20 +7,12 @@ import { isAxiosError } from 'axios'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Briefcase, ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
-import { useAuthStore, type AuthUser } from '@/store/auth.store'
+import { useAuthStore } from '@/store/auth.store'
 import { loginSchema, type LoginFormData } from '@/types/auth.types'
 import { cn } from '@/lib/utils'
 
-// Adapt this interface once the real API response shape is confirmed
 interface LoginResponse {
-  token?: string
-  accessToken?: string
-  jwt?: string
-  user?: AuthUser
-}
-
-function extractToken(data: LoginResponse): string | null {
-  return data.token ?? data.accessToken ?? data.jwt ?? null
+  token: string
 }
 
 export default function LoginPage() {
@@ -39,24 +31,15 @@ export default function LoginPage() {
 
   const { mutate: login, isPending } = useMutation({
     mutationFn: ({ email, password }: LoginFormData) =>
-      api
-        .post<LoginResponse>('/login', { username: email, password })
-        .then((r) => r.data),
-    onSuccess: (data) => {
-      const token = extractToken(data)
-      if (!token) {
-        toast.error('Login succeeded but no token was returned. Contact support.')
-        return
-      }
-      const user: AuthUser = data.user ?? { id: '', name: '', email: '', role: 'user' }
-      setAuth(token, user)
+      api.post<LoginResponse>('/login', { username: email, password }).then((r) => r.data),
+    onSuccess: ({ token }, { email }) => {
+      setAuth(token, { id: '', name: '', email, role: 'user' })
       navigate('/dashboard')
     },
     onError: (error) => {
       if (isAxiosError(error)) {
-        // API returns RFC 9110 errors: { title, status, traceId }
         const data = error.response?.data
-        const msg = data?.title ?? data?.message ?? 'Invalid email or password.'
+        const msg = data?.message ?? data?.title ?? 'Invalid email or password.'
         toast.error(msg)
       } else {
         toast.error('Something went wrong. Please try again.')

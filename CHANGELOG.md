@@ -3,6 +3,12 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.2.0] - 2026-06-16
+
+### ✨ Features
+
+- Login flow: simplified to send `{ username, password }` to `POST /login`; response typed as `{ token }` matching the confirmed API shape; user object constructed from form email on success
+
 ## [1.1.0] - 2026-06-16
 
 ### ✨ Features
