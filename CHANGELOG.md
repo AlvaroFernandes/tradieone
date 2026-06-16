@@ -3,6 +3,16 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.4.0] - 2026-06-16
+
+### ✨ Features
+
+- Onboarding Step 2 — "User Identity" screen: avatar upload UI, first name, last name, phone, date of birth, and job title dropdown
+- On submit calls `PUT /api/UserProfiles?tenantId={tenantId}` and redirects to `/dashboard`
+- "Go Back" button returns to Step 1 without losing Step 1 state
+- Sidebar progress bar animates from 1/3 to 2/3 when advancing to Step 2
+- Step 2 pre-fills first name and last name from the register form data stored in localStorage
+
 ## [1.3.0] - 2026-06-16
 
 ### ✨ Features

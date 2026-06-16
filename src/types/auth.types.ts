@@ -44,9 +44,18 @@ export const onboardingStep1Schema = z.object({
     .regex(/^\d{4}$/, 'Invalid postcode'),
 })
 
+export const onboardingStep2Schema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  phone: z.string().min(10, 'Enter a valid phone number'),
+  dateOfBirth: z.string().min(1, 'Date of birth is required'),
+  jobTitle: z.string().min(1, 'Job title is required'),
+})
+
 export type LoginFormData = z.infer<typeof loginSchema>
 export type RegisterFormData = z.infer<typeof registerSchema>
 export type RegisterPayload = Omit<RegisterFormData, 'terms'>
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>
 export type OnboardingStep1Data = z.infer<typeof onboardingStep1Schema>
+export type OnboardingStep2Data = z.infer<typeof onboardingStep2Schema>
