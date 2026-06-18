@@ -3,6 +3,13 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.6.0] - 2026-06-18
+
+### 🐛 Fixes
+
+- Error handlers in register, onboarding Step 1, and onboarding Step 2 now surface plain-text API responses (e.g. `"User not match or User not existed."`) correctly; previously only JSON `message`/`title` fields were checked, so plain-string 400/500 bodies fell through silently to the generic fallback
+- Onboarding Step 2 error handler corrected from `??` to `||` so empty-string responses fall through to the generic message (mirrors the fix already applied to Step 1 in v1.5.0)
+
 ## [1.5.0] - 2026-06-18
 
 ### ✨ Features

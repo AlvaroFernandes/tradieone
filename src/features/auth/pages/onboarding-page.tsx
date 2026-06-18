@@ -159,8 +159,10 @@ function Step1Form({ onSuccess }: { onSuccess: () => void }) {
     },
     onError: (error) => {
       if (isAxiosError(error)) {
-        const data = error.response?.data
+        const raw = error.response?.data
+        const data = typeof raw === 'object' && raw !== null ? raw : null
         const msg =
+          (typeof raw === 'string' && raw) ||
           data?.message ||
           data?.title ||
           Object.values(data?.errors ?? {}).flat().join(' ') ||
@@ -386,11 +388,13 @@ function Step2Form({ onBack }: { onBack: () => void }) {
     },
     onError: (error) => {
       if (isAxiosError(error)) {
-        const data = error.response?.data
+        const raw = error.response?.data
+        const data = typeof raw === 'object' && raw !== null ? raw : null
         const msg =
-          data?.message ??
-          data?.title ??
-          Object.values(data?.errors ?? {}).flat().join(' ') ??
+          (typeof raw === 'string' && raw) ||
+          data?.message ||
+          data?.title ||
+          Object.values(data?.errors ?? {}).flat().join(' ') ||
           'Failed to save profile.'
         toast.error(String(msg))
       } else {

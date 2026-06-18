@@ -78,8 +78,10 @@ export default function RegisterPage() {
     },
     onError: (error) => {
       if (isAxiosError(error)) {
-        const data = error.response?.data
+        const raw = error.response?.data
+        const data = typeof raw === 'object' && raw !== null ? raw : null
         const msg =
+          (typeof raw === 'string' && raw) ||
           data?.message ||
           data?.title ||
           Object.values(data?.errors ?? {}).flat().join(' ') ||
