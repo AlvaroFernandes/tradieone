@@ -3,6 +3,12 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.7.0] - 2026-06-18
+
+### 🐛 Fixes
+
+- `country` field in register and onboarding Step 1 changed from `"Australia"` to `"AU"` — the backend expects ISO 3166-1 alpha-2 code; sending the full name caused a 500 on `PUT /api/Tenants/{id}`
+
 ## [1.6.0] - 2026-06-18
 
 ### 🐛 Fixes

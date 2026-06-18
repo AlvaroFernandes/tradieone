@@ -59,7 +59,7 @@ export default function RegisterPage() {
             suburb: '',
             state: '',
             postcode: '',
-            country: 'Australia',
+            country: 'AU',
             logoUrl: '',
           },
         }, { headers: { Authorization: `Bearer ${token}` } })

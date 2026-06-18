@@ -150,7 +150,7 @@ function Step1Form({ onSuccess }: { onSuccess: () => void }) {
           suburb: data.suburb,
           state: data.state,
           postcode: data.postcode,
-          country: 'Australia',
+          country: 'AU',
           logoUrl: '',
         })
         .then((r) => r.data),
