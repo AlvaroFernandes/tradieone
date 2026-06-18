@@ -16,18 +16,15 @@ import {
   CalendarDays,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { api } from '@/lib/api'
-import { useAuthStore, type AuthUser } from '@/store/auth.store'
+import { api, tdoApi } from '@/lib/api'
+import { useAuthStore } from '@/store/auth.store'
 import { registerSchema, type RegisterFormData } from '@/types/auth.types'
 import { cn } from '@/lib/utils'
-
-interface RegisterResponse {
-  token: string
-}
 
 export default function RegisterPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const setTenantId = useAuthStore((s) => s.setTenantId)
   const [showPassword, setShowPassword] = useState(false)
 
   const {
@@ -39,25 +36,53 @@ export default function RegisterPage() {
   })
 
   const { mutate: createAccount, isPending } = useMutation({
-    mutationFn: ({ email, password, businessName, firstName, lastName }: RegisterFormData) => {
+    mutationFn: async ({ email, password, businessName, firstName, lastName }: RegisterFormData) => {
+      // 1. Auth signup → token
+      const { token } = await api
+        .post<{ token: string }>('/signup', { username: email, password })
+        .then((r) => r.data)
+
+      // 2. Create user + tenant → tenantId
+      const { tenantId } = await tdoApi
+        .post<{ tenantId: string }>('/api/Users', {
+          firstName,
+          lastName,
+          phone: '',
+          tenant: {
+            name: businessName,
+            email: '',
+            phone: '',
+            abn: '',
+            isGstregistered: false,
+            addressLine1: '',
+            addressLine2: '',
+            suburb: '',
+            state: '',
+            postcode: '',
+            country: 'Australia',
+            logoUrl: '',
+          },
+        }, { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => r.data)
+
+      return { token, tenantId, email, firstName, lastName, businessName }
+    },
+    onSuccess: ({ token, tenantId, email, firstName, lastName, businessName }) => {
+      setAuth(token, { id: '', name: `${firstName} ${lastName}`, email, role: 'user' })
+      setTenantId(tenantId)
       localStorage.setItem(
         'tradieone-pending-profile',
         JSON.stringify({ businessName, firstName, lastName }),
       )
-return api.post<RegisterResponse>('/signup', { username: email, password }).then((r) => r.data)
-    },
-    onSuccess: ({ token }, { email, firstName, lastName }) => {
-      setAuth(token, { id: '', name: `${firstName} ${lastName}`, email, role: 'user' })
       navigate('/onboarding')
     },
     onError: (error) => {
       if (isAxiosError(error)) {
-        console.error('Signup API error:', error.response?.data)
         const data = error.response?.data
         const msg =
-          data?.message ??
-          data?.title ??
-          Object.values(data?.errors ?? {}).flat().join(' ') ??
+          data?.message ||
+          data?.title ||
+          Object.values(data?.errors ?? {}).flat().join(' ') ||
           'Registration failed. Please try again.'
         toast.error(String(msg))
       } else {

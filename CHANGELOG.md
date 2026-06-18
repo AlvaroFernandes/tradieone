@@ -3,6 +3,14 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.5.0] - 2026-06-18
+
+### ✨ Features
+
+- Register page now calls `POST /api/Users` immediately after `/signup`, using the returned token to create the user and tenant on tdoserver; stores `tenantId` in Zustand before navigating to `/onboarding`
+- Onboarding Step 1 now calls `PUT /api/Tenants/{tenantId}` (instead of `POST /api/Users`) with the business details collected in the form
+- Error handlers across register and onboarding now use `||` instead of `??` so empty response bodies fall through to the generic message (fixes blank toast on 500)
+
 ## [1.4.0] - 2026-06-16
 
 ### ✨ Features

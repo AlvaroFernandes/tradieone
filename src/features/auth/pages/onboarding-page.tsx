@@ -116,13 +116,8 @@ function Sidebar({ step }: { step: 1 | 2 }) {
 
 // ── Step 1 ────────────────────────────────────────────────────────
 
-interface CreateUserResponse {
-  tenantId?: string
-  tenant?: { id?: string }
-}
-
 function Step1Form({ onSuccess }: { onSuccess: () => void }) {
-  const setTenantId = useAuthStore((s) => s.setTenantId)
+  const tenantId = useAuthStore((s) => s.tenantId)
 
   const pending: PendingProfile = JSON.parse(
     localStorage.getItem('tradieone-pending-profile') ?? '{}',
@@ -141,41 +136,34 @@ function Step1Form({ onSuccess }: { onSuccess: () => void }) {
 
   const isGstRegistered = watch('isGstRegistered')
 
-  const { mutate: createUser, isPending } = useMutation({
+  const { mutate: updateTenant, isPending } = useMutation({
     mutationFn: (data: OnboardingStep1Data) =>
       tdoApi
-        .post<CreateUserResponse>('/api/Users', {
-          firstName: pending.firstName ?? '',
-          lastName: pending.lastName ?? '',
+        .put(`/api/Tenants/${tenantId}`, {
+          name: pending.businessName ?? '',
+          email: data.businessEmail,
           phone: data.businessPhone,
-          tenant: {
-            name: pending.businessName ?? '',
-            email: data.businessEmail,
-            phone: data.businessPhone,
-            abn: data.abn,
-            isGstregistered: data.isGstRegistered,
-            addressLine1: data.addressLine1,
-            addressLine2: '',
-            suburb: data.suburb,
-            state: data.state,
-            postcode: data.postcode,
-            country: 'Australia',
-            logoUrl: '',
-          },
+          abn: data.abn,
+          isGstregistered: data.isGstRegistered,
+          addressLine1: data.addressLine1,
+          addressLine2: '',
+          suburb: data.suburb,
+          state: data.state,
+          postcode: data.postcode,
+          country: 'Australia',
+          logoUrl: '',
         })
         .then((r) => r.data),
-    onSuccess: (data) => {
-      const tenantId = data.tenantId ?? data.tenant?.id ?? ''
-      if (tenantId) setTenantId(tenantId)
+    onSuccess: () => {
       onSuccess()
     },
     onError: (error) => {
       if (isAxiosError(error)) {
         const data = error.response?.data
         const msg =
-          data?.message ??
-          data?.title ??
-          Object.values(data?.errors ?? {}).flat().join(' ') ??
+          data?.message ||
+          data?.title ||
+          Object.values(data?.errors ?? {}).flat().join(' ') ||
           'Failed to save business details.'
         toast.error(String(msg))
       } else {
@@ -196,7 +184,7 @@ function Step1Form({ onSuccess }: { onSuccess: () => void }) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit((d) => createUser(d))} noValidate>
+        <form onSubmit={handleSubmit((d) => updateTenant(d))} noValidate>
           <div className="space-y-8 rounded-2xl border border-[rgba(194,198,216,0.3)] bg-white/70 p-10 shadow-[0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_8px_10px_-6px_rgba(0,0,0,0.1)] backdrop-blur-sm">
             {/* Logo Upload */}
             <div className="space-y-2">
