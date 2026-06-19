@@ -3,6 +3,12 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.9.0] - 2026-06-19
+
+### ✨ Features
+
+- Onboarding Step 1 logo field now shows an image preview after file selection and a Remove button to clear it; upload to storage is pending backend file upload API
+
 ## [1.8.0] - 2026-06-19
 
 ### 🐛 Fixes

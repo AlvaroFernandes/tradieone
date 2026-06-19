@@ -118,6 +118,7 @@ function Sidebar({ step }: { step: 1 | 2 }) {
 
 function Step1Form({ onSuccess }: { onSuccess: () => void }) {
   const tenantId = useAuthStore((s) => s.tenantId)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
   const pending: PendingProfile = JSON.parse(
     localStorage.getItem('tradieone-pending-profile') ?? '{}',
@@ -135,6 +136,13 @@ function Step1Form({ onSuccess }: { onSuccess: () => void }) {
   })
 
   const isGstRegistered = watch('isGstRegistered')
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = URL.createObjectURL(file)
+    setLogoPreview(url)
+  }
 
   const { mutate: updateTenant, isPending } = useMutation({
     mutationFn: (data: OnboardingStep1Data) =>
@@ -193,18 +201,40 @@ function Step1Form({ onSuccess }: { onSuccess: () => void }) {
               <span className="block font-inter text-[11px] font-semibold uppercase tracking-[0.6px] text-[#424656]">
                 BUSINESS LOGO
               </span>
-              <label className="flex h-[140px] w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#c2c6d8] bg-[#f8f9fc] transition-colors hover:border-[#0050cb]/50 hover:bg-[#f0f4ff]">
-                <input type="file" accept="image/*" className="sr-only" />
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f0f4ff]">
-                  <Building2 className="h-6 w-6 text-[#0050cb]" />
+              {logoPreview ? (
+                <div className="flex h-[140px] w-full items-center justify-between gap-6 rounded-xl border-2 border-[#0050cb]/30 bg-[#f0f4ff] px-6">
+                  <img
+                    src={logoPreview}
+                    alt="Logo preview"
+                    className="h-20 max-w-[200px] rounded-lg object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLogoPreview(null)}
+                    className="font-inter text-sm font-semibold text-[#9ca3af] hover:text-red-500"
+                  >
+                    Remove
+                  </button>
                 </div>
-                <div className="text-center">
-                  <p className="font-inter text-sm font-semibold text-[#1c1b1b]">
-                    Click to upload your logo
-                  </p>
-                  <p className="mt-0.5 font-inter text-xs text-[#9ca3af]">PNG, JPG up to 5MB</p>
-                </div>
-              </label>
+              ) : (
+                <label className="flex h-[140px] w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#c2c6d8] bg-[#f8f9fc] transition-colors hover:border-[#0050cb]/50 hover:bg-[#f0f4ff]">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handleLogoChange}
+                  />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f0f4ff]">
+                    <Building2 className="h-6 w-6 text-[#0050cb]" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-inter text-sm font-semibold text-[#1c1b1b]">
+                      Click to upload your logo
+                    </p>
+                    <p className="mt-0.5 font-inter text-xs text-[#9ca3af]">PNG, JPG up to 5MB</p>
+                  </div>
+                </label>
+              )}
             </div>
 
             {/* 2×2 Grid */}
