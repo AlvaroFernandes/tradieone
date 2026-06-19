@@ -3,6 +3,13 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.8.0] - 2026-06-19
+
+### 🐛 Fixes
+
+- `api` axios client (authgen) now has a hardcoded fallback URL `https://authgen.azurewebsites.net` when `VITE_API_BASE_URL` is not set at build time — fixes signup/login broken in production where the env var was undefined
+- CI workflow now passes `VITE_API_BASE_URL` and `VITE_TDO_API_BASE_URL` as env vars during the build step so they are baked into the Vite bundle correctly
+
 ## [1.7.0] - 2026-06-18
 
 ### 🐛 Fixes

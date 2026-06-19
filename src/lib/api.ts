@@ -27,7 +27,9 @@ function makeClient(baseURL: string) {
   return client
 }
 
-export const api = makeClient(import.meta.env.VITE_API_BASE_URL)
+export const api = makeClient(
+  import.meta.env.VITE_API_BASE_URL ?? 'https://authgen.azurewebsites.net',
+)
 export const tdoApi = makeClient(
   import.meta.env.VITE_TDO_API_BASE_URL ?? 'https://tdoserver.azurewebsites.net',
 )
