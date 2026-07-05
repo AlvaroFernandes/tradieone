@@ -3,6 +3,14 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.12.0] - 2026-07-05
+
+### ✨ Features
+
+- Redesigned the app sidebar to match the target layout: "TradieOne / Trades Management" header, new nav icons (Home, Projects, Jobs, Calendar, Clients, Team, Timesheets, Finance, Reports), a "Quick Actions" button, and Settings/Support entries
+- Nav items without a page yet (Projects, Jobs, Calendar, Team, Timesheets, Finance, Reports, Settings, Support) render muted and non-clickable instead of linking to a route that doesn't exist
+- Sign out (previously in the sidebar footer) is kept as a real action below Support, since removing it would regress existing functionality
+
 ## [1.11.1] - 2026-07-05
 
 ### 🐛 Fixes
