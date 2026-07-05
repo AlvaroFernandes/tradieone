@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
@@ -15,6 +15,12 @@ import {
   Calendar,
   Briefcase,
   Camera,
+  Zap,
+  Users,
+  FileText,
+  CheckCircle2,
+  Star,
+  LayoutDashboard,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { tdoApi } from '@/lib/api'
@@ -26,6 +32,7 @@ import {
   type OnboardingStep2Data,
 } from '@/types/auth.types'
 import { cn } from '@/lib/utils'
+import { useConfirmFreePlan } from '@/features/auth/hooks/use-confirm-free-plan'
 
 const AU_STATES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA']
 
@@ -48,16 +55,16 @@ interface PendingProfile {
 // ── Root ─────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
-  const [step, setStep] = useState<1 | 2>(1)
+  const location = useLocation()
+  const initialStep = (location.state as { step?: 1 | 2 | 3 } | null)?.step ?? 1
+  const [step, setStep] = useState<1 | 2 | 3>(initialStep)
 
   return (
     <div className="flex min-h-screen">
       <Sidebar step={step} />
-      {step === 1 ? (
-        <Step1Form onSuccess={() => setStep(2)} />
-      ) : (
-        <Step2Form onBack={() => setStep(1)} />
-      )}
+      {step === 1 && <Step1Form onSuccess={() => setStep(2)} />}
+      {step === 2 && <Step2Form onBack={() => setStep(1)} onSuccess={() => setStep(3)} />}
+      {step === 3 && <Step3Plan />}
     </div>
   )
 }
@@ -79,9 +86,16 @@ const STEP_META = {
     label: 'SECOND STEP: USER IDENTITY',
     progress: 'w-2/3',
   },
+  3: {
+    heading: "You're all set!",
+    description:
+      'Your TradieOne workspace is ready. You can now start managing your operations with greater control, clarity, and the precision of a master craftsman.',
+    label: 'THIRD STEP: COMPLETION',
+    progress: 'w-full',
+  },
 }
 
-function Sidebar({ step }: { step: 1 | 2 }) {
+function Sidebar({ step }: { step: 1 | 2 | 3 }) {
   const meta = STEP_META[step]
   return (
     <aside
@@ -385,8 +399,7 @@ function Step1Form({ onSuccess }: { onSuccess: () => void }) {
 
 // ── Step 2 ────────────────────────────────────────────────────────
 
-function Step2Form({ onBack }: { onBack: () => void }) {
-  const navigate = useNavigate()
+function Step2Form({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => void }) {
   const tenantId = useAuthStore((s) => s.tenantId)
 
   const pending: PendingProfile = JSON.parse(
@@ -414,7 +427,7 @@ function Step2Form({ onBack }: { onBack: () => void }) {
         .then((r) => r.data),
     onSuccess: () => {
       localStorage.removeItem('tradieone-pending-profile')
-      navigate('/dashboard')
+      onSuccess()
     },
     onError: (error) => {
       if (isAxiosError(error)) {
@@ -583,6 +596,139 @@ function Step2Form({ onBack }: { onBack: () => void }) {
             </div>
           </div>
         </form>
+      </div>
+    </main>
+  )
+}
+
+// ── Step 3 ────────────────────────────────────────────────────────
+
+const CHECKLIST_ITEMS = ['Business Profile', 'Billing Details', 'User Information']
+
+function Step3Plan() {
+  const navigate = useNavigate()
+  const { mutate: confirmFreePlan, isPending } = useConfirmFreePlan(() => navigate('/dashboard'))
+
+  return (
+    <main className="flex flex-1 items-start justify-center overflow-y-auto bg-[#fcf9f8] px-6 py-10 lg:px-12">
+      <div className="w-full max-w-[800px] space-y-6">
+        <div className="space-y-3">
+          <span className="inline-block rounded-full bg-[#eef2ff] px-3 py-1 font-inter text-[11px] font-semibold uppercase tracking-[0.6px] text-[#4442e3]">
+            Plan Confirmation
+          </span>
+          <h1 className="font-manrope text-[40px] font-bold leading-[52px] tracking-[-0.8px] text-[#1c1b1b]">
+            Your Plan: FREE Forever
+          </h1>
+          <p className="font-inter text-base text-[#424656]">
+            A solid foundation for your independent trade business.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          {/* Active plan card */}
+          <div className="rounded-2xl bg-[#161616] p-6">
+            <div className="flex items-start justify-between">
+              <span className="inline-block rounded-full bg-[#0050cb] px-2.5 py-1 font-inter text-[10px] font-semibold uppercase tracking-[0.6px] text-white">
+                Active Plan
+              </span>
+              <Zap className="h-5 w-5 text-white" />
+            </div>
+            <p className="mt-4 font-manrope text-2xl font-bold text-white">FREE Forever</p>
+            <p className="font-inter text-sm text-white/60">Basic features enabled</p>
+
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center gap-2 font-inter text-sm text-white/80">
+                <Users className="h-4 w-4" />
+                1 team member
+              </div>
+              <div className="flex items-center gap-2 font-inter text-sm text-white/80">
+                <FileText className="h-4 w-4" />
+                10 invoices / mo
+              </div>
+            </div>
+
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <p className="font-inter text-xs text-white/50">
+                Want more? Upgrade anytime to add team members and unlock unlimited invoices.
+              </p>
+            </div>
+          </div>
+
+          {/* Setup progress card */}
+          <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6">
+            <div className="flex items-center justify-between">
+              <p className="font-manrope text-lg font-semibold text-[#1c1b1b]">Setup Progress</p>
+              <span className="rounded-full bg-[#eef2ff] px-2.5 py-1 font-inter text-xs font-semibold text-[#0050cb]">
+                100%
+              </span>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {CHECKLIST_ITEMS.map((item) => (
+                <div key={item} className="flex items-center gap-2 font-inter text-sm text-[#424656]">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+                  {item}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-lg border border-[#e5e7eb] bg-[#f8f9fc] p-3">
+              <p className="font-inter text-xs italic text-[#424656]">
+                Everything looks perfect! You're ahead of 90% of new users today.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Upsell */}
+        <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6">
+          <div className="flex items-center gap-2">
+            <Star className="h-4 w-4 text-amber-400" />
+            <p className="font-manrope text-base font-semibold text-[#1c1b1b]">Want more?</p>
+          </div>
+          <p className="mt-1 font-inter text-sm text-[#424656]">
+            Upgrade anytime to add more team members, unlock unlimited invoices, and access
+            advanced features designed to help your business grow more efficiently.
+          </p>
+          <button
+            type="button"
+            className="mt-2 font-inter text-sm font-semibold text-[#0050cb] hover:underline"
+          >
+            Compare Plans
+          </button>
+        </div>
+
+        {/* CTAs */}
+        <div className="flex items-center justify-end gap-4">
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => confirmFreePlan()}
+            style={{ background: 'linear-gradient(90deg, #0050cb 0%, #4442e3 100%)' }}
+            className={cn(
+              'flex h-12 items-center gap-2 rounded-xl px-6',
+              'font-inter text-base font-semibold text-white',
+              'shadow-[0px_10px_15px_-3px_rgba(0,80,203,0.2),0px_4px_6px_-4px_rgba(0,80,203,0.2)]',
+              'transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60',
+            )}
+          >
+            {isPending ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              <>
+                Go to Dashboard
+                <LayoutDashboard className="h-4 w-4" />
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/onboarding/upgrade')}
+            className="flex h-12 items-center rounded-xl border border-[#0050cb] bg-white px-6 font-inter text-base font-semibold text-[#0050cb] transition-colors hover:bg-[#f0f4ff]"
+          >
+            Upgrade to Solo Tradie ($15/mo)
+          </button>
+        </div>
       </div>
     </main>
   )

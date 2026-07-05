@@ -3,6 +3,19 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.10.0] - 2026-07-05
+
+### ✨ Features
+
+- Onboarding now has a Step 3 "Plan Confirmation" screen: shows the active Free Forever plan, a setup-progress checklist, and CTAs to go to the dashboard or upgrade
+- New `/onboarding/upgrade` page with Monthly/Annual billing toggle, three plan tiers (Solo Tradie, The Growing Crew, The Commercial Outfit), and an expandable feature comparison
+- Selecting a paid plan opens a payment modal (Stripe Elements for card number/expiry/CVC, billing address, subscription summary with GST breakdown) — card tokenization via `stripe.createPaymentMethod()` is wired and verified with Stripe test cards
+- "Go to Dashboard" (Step 3 and upgrade page) confirms the Free plan via `POST /api/Subscriptions/upgrade` and redirects; shared via `useConfirmFreePlan` hook
+
+### ⚠️ Known gaps
+
+- Paid-plan checkout is not connected to the backend yet: no confirmed endpoint exists to create a Stripe PaymentIntent from the tokenized payment method, so `Upgrade Now` stops after tokenizing the card. Pending input from Kel on how the PaymentIntent ID will be obtained.
+
 ## [1.9.0] - 2026-06-19
 
 ### ✨ Features

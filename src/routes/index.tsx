@@ -7,6 +7,7 @@ const RegisterPage = lazy(() => import('@/features/auth/pages/register-page'))
 const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/forgot-password-page'))
 const ResetPasswordPage = lazy(() => import('@/features/auth/pages/reset-password-page'))
 const OnboardingPage = lazy(() => import('@/features/auth/pages/onboarding-page'))
+const UpgradePlanPage = lazy(() => import('@/features/auth/pages/upgrade-plan-page'))
 const TokenPage = lazy(() => import('@/features/auth/pages/token-page'))
 const AppLayout = lazy(() => import('@/components/layout/app-layout'))
 const DashboardPage = lazy(() => import('@/features/dashboard/pages/dashboard-page'))
@@ -36,6 +37,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute>
               <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/onboarding/upgrade"
+          element={
+            <ProtectedRoute>
+              <UpgradePlanPage />
             </ProtectedRoute>
           }
         />
