@@ -3,6 +3,12 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.11.1] - 2026-07-05
+
+### 🐛 Fixes
+
+- New Client modal changed from a centered dialog to a right-side slide-in drawer (full height, animated in/out) to match the actual design
+
 ## [1.11.0] - 2026-07-05
 
 ### ✨ Features

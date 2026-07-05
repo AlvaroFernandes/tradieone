@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -30,7 +30,13 @@ interface NewClientModalProps {
 export function NewClientModal({ onClose, onCreate }: NewClientModalProps) {
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setIsOpen(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   const {
     register,
@@ -65,8 +71,18 @@ export function NewClientModal({ onClose, onCreate }: NewClientModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-[660px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div
+      className={cn(
+        'fixed inset-0 z-50 flex justify-end bg-black/30 transition-opacity duration-300',
+        isOpen ? 'opacity-100' : 'opacity-0',
+      )}
+    >
+      <div
+        className={cn(
+          'flex h-full w-full max-w-[600px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-out',
+          isOpen ? 'translate-x-0' : 'translate-x-full',
+        )}
+      >
         <div className="flex items-start justify-between border-b border-[#e5e7eb] p-6">
           <div>
             <h2 className="font-manrope text-2xl font-bold text-[#1c1b1b]">Create New Client</h2>
