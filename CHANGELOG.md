@@ -3,6 +3,13 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.13.0] - 2026-07-05
+
+### ✨ Features
+
+- Add `PaymentSuccessCard` component matching the "Payment Successful!" confirmation screen (order number, amount, next billing date, receipt email, View Receipt / Go to Dashboard / Download Invoice actions)
+- Not wired into the live upgrade flow yet — it needs real data (order number, next billing date) from the backend charge response, which isn't defined until the PaymentIntent flow is connected
+
 ## [1.12.0] - 2026-07-05
 
 ### ✨ Features
