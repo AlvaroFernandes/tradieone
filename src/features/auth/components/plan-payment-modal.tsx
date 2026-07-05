@@ -47,7 +47,7 @@ export function PlanPaymentModal({ plan, billingCycle, onClose }: PlanPaymentMod
         </button>
 
         <Elements stripe={stripePromise}>
-          <PaymentForm plan={plan} billingCycle={billingCycle} onClose={onClose} />
+          <PaymentForm onClose={onClose} />
         </Elements>
 
         <SummaryPanel plan={plan} billingCycle={billingCycle} onClose={onClose} />
@@ -56,14 +56,7 @@ export function PlanPaymentModal({ plan, billingCycle, onClose }: PlanPaymentMod
   )
 }
 
-function PaymentForm({
-  plan,
-  onClose,
-}: {
-  plan: PlanTier
-  billingCycle: BillingCycle
-  onClose: () => void
-}) {
+function PaymentForm({ onClose }: { onClose: () => void }) {
   const stripe = useStripe()
   const elements = useElements()
   const user = useAuthStore((s) => s.user)
@@ -104,9 +97,9 @@ function PaymentForm({
     }
 
     // Tokenization succeeded — paymentMethod.id is ready to send to the backend.
-    // The subscription charge flow (create + confirm the PaymentIntent server-side
-    // for plan "${plan.apiTier}") is not wired up yet: pending the backend endpoint
-    // that creates a PaymentIntent from this payment method.
+    // The subscription charge flow (create + confirm the PaymentIntent server-side)
+    // is not wired up yet: pending the backend endpoint that creates a PaymentIntent
+    // from this payment method.
     console.info('Stripe payment method created:', paymentMethod.id)
     toast.info('Card verified. Payment processing is not connected to the backend yet.')
     setIsSubmitting(false)

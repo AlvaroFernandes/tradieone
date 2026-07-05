@@ -3,6 +3,15 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.11.0] - 2026-07-05
+
+### ✨ Features
+
+- Clients page (`/clients`) redesigned with stat cards (Total/Active Clients, Projects in Progress, Outstanding Balance), a search + status/type filter bar, a client table, and working pagination — all computed from the client list, not hardcoded
+- New Client modal: client info (name, type, email, phone, avatar), collapsible "Additional Details" (address, ABN, payment terms, default GST, notes), and a Primary Contact section with a "same as client" shortcut
+- ABN is now required when Client Type is "Commercial", enforced via zod validation
+- Creating a client currently only updates local state (`useState`) — there is no backend endpoint yet for listing/creating clients, so nothing persists past a page refresh
+
 ## [1.10.0] - 2026-07-05
 
 ### ✨ Features
