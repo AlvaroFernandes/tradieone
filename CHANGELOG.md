@@ -3,6 +3,15 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.14.0] - 2026-07-09
+
+### ✨ Features
+
+- Clients page now loads its list from the real `GET /api/Clients?tenantId=` endpoint (tdoserver) via TanStack Query instead of hardcoded mock data, with loading and error states in the table
+- Verified end-to-end with a live network trace: the request fires with the correct URL, tenant param, and `Authorization: Bearer` header, and a 401 correctly triggers the app's existing auth-expiry redirect
+- Removed the now-unused `MOCK_CLIENTS` fixture; `ClientRow` moved to `types/client.types.ts` alongside the other client types
+- "New Client" still adds rows locally only (no `POST /api/Clients` wiring yet) — unchanged from before
+
 ## [1.13.0] - 2026-07-05
 
 ### ✨ Features

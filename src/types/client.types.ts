@@ -28,3 +28,17 @@ export const newClientSchema = z
   })
 
 export type NewClientFormData = z.infer<typeof newClientSchema>
+
+export interface ClientRow {
+  id: string
+  initials: string
+  name: string
+  contactName: string
+  contactEmail: string
+  type: ClientType
+  projects: number
+  jobs: number
+  outstanding: number
+  invoiceLabel: string
+  status: 'Active' | 'Inactive'
+}

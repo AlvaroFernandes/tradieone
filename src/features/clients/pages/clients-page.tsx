@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Building2,
   ChevronDown,
@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Download,
   DollarSign,
+  Loader2,
   MoreHorizontal,
   Plus,
   Search,
@@ -15,20 +16,25 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { MOCK_CLIENTS, type ClientRow } from '@/features/clients/constants/mock-clients'
+import { useClients } from '@/features/clients/hooks/use-clients'
 import { NewClientModal } from '@/features/clients/components/new-client-modal'
-import type { NewClientFormData } from '@/types/client.types'
+import type { ClientRow, NewClientFormData } from '@/types/client.types'
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<ClientRow[]>(MOCK_CLIENTS)
+  const { data: fetchedClients, isLoading, isError, error } = useClients()
+  const [clients, setClients] = useState<ClientRow[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All')
   const [typeFilter, setTypeFilter] = useState<'All' | 'Commercial' | 'Residential'>('All')
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [page, setPage] = useState(1)
   const [showNewClientModal, setShowNewClientModal] = useState(false)
+
+  useEffect(() => {
+    if (fetchedClients) setClients(fetchedClients)
+  }, [fetchedClients])
 
   const filtered = useMemo(() => {
     return clients.filter((c) => {
@@ -215,7 +221,24 @@ export default function ClientsPage() {
               </tr>
             </thead>
             <tbody>
-              {pageRows.map((client) => (
+              {isLoading && (
+                <tr>
+                  <td colSpan={7} className="py-10 text-center text-[#9ca3af]">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading clients...
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {isError && (
+                <tr>
+                  <td colSpan={7} className="py-10 text-center text-red-500">
+                    {error instanceof Error ? error.message : 'Failed to load clients.'}
+                  </td>
+                </tr>
+              )}
+              {!isLoading && !isError && pageRows.map((client) => (
                 <tr key={client.id} className="border-b border-[#e5e7eb] last:border-0">
                   <td className="py-4 pr-4">
                     <div className="flex items-center gap-3">
@@ -265,7 +288,7 @@ export default function ClientsPage() {
                   </td>
                 </tr>
               ))}
-              {pageRows.length === 0 && (
+              {!isLoading && !isError && pageRows.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-[#9ca3af]">
                     No clients match your filters.
