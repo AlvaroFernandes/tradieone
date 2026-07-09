@@ -32,7 +32,7 @@ import {
   type OnboardingStep2Data,
 } from '@/types/auth.types'
 import { cn } from '@/lib/utils'
-import { formatAbn } from '@/lib/format'
+import { formatAbn, formatAuPhone } from '@/lib/format'
 import { useConfirmFreePlan } from '@/features/auth/hooks/use-confirm-free-plan'
 
 const AU_STATES = ['ACT', 'NSW', 'NT', 'QLD', 'SA', 'TAS', 'VIC', 'WA']
@@ -152,6 +152,7 @@ function Step1Form({ onSuccess }: { onSuccess: () => void }) {
 
   const isGstRegistered = watch('isGstRegistered')
   const abnField = register('abn')
+  const businessPhoneField = register('businessPhone')
 
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -287,8 +288,14 @@ function Step1Form({ onSuccess }: { onSuccess: () => void }) {
                   <IconWrap><Phone className="h-4 w-4 text-[#9ca3af]" /></IconWrap>
                   <input
                     type="tel"
+                    inputMode="numeric"
                     placeholder="0400 000 000"
-                    {...register('businessPhone')}
+                    maxLength={12}
+                    {...businessPhoneField}
+                    onChange={(e) => {
+                      e.target.value = formatAuPhone(e.target.value)
+                      businessPhoneField.onChange(e)
+                    }}
                     className={cn(inputClass(!!errors.businessPhone), 'pl-11')}
                   />
                 </div>

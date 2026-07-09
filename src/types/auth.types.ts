@@ -36,7 +36,10 @@ export const onboardingStep1Schema = z.object({
     .transform((v) => v.replace(/\s/g, ''))
     .refine((v) => /^\d{11}$/.test(v), 'Enter a valid 11-digit ABN'),
   businessEmail: z.email('Invalid email address'),
-  businessPhone: z.string().min(10, 'Enter a valid phone number'),
+  businessPhone: z
+    .string()
+    .transform((v) => v.replace(/\s/g, ''))
+    .refine((v) => /^0\d{9}$/.test(v), 'Enter a valid phone number'),
   isGstRegistered: z.boolean(),
   addressLine1: z.string().min(1, 'Address is required'),
   suburb: z.string().min(1, 'Suburb is required'),

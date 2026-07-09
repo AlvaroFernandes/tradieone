@@ -3,6 +3,13 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.16.0] - 2026-07-09
+
+### ✨ Features
+
+- Onboarding step 1's Business Phone field now auto-formats as you type into standard Australian groupings: mobiles as `04XX XXX XXX`, landlines as `0X XXXX XXXX`
+- The onboarding schema strips spaces and validates a 10-digit number starting with `0`, so `PUT /api/Tenants/{id}` always receives the plain digit string
+
 ## [1.15.0] - 2026-07-09
 
 ### ✨ Features
