@@ -31,7 +31,10 @@ export const resetPasswordSchema = z
   })
 
 export const onboardingStep1Schema = z.object({
-  abn: z.string().min(11, 'Enter a valid 11-digit ABN'),
+  abn: z
+    .string()
+    .transform((v) => v.replace(/\s/g, ''))
+    .refine((v) => /^\d{11}$/.test(v), 'Enter a valid 11-digit ABN'),
   businessEmail: z.email('Invalid email address'),
   businessPhone: z.string().min(10, 'Enter a valid phone number'),
   isGstRegistered: z.boolean(),

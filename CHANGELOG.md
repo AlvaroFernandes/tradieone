@@ -3,6 +3,13 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.15.0] - 2026-07-09
+
+### ✨ Features
+
+- Onboarding step 1's Business ABN field now auto-formats as you type into the standard Australian grouping (`XX XXX XXX XXX`), capped at 11 digits
+- The onboarding schema strips spaces and validates exactly 11 digits, so the value sent to `PUT /api/Tenants/{id}` is always the clean digit string, not the display-formatted one
+
 ## [1.14.0] - 2026-07-09
 
 ### ✨ Features
