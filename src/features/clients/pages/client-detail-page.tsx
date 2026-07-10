@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
@@ -22,7 +22,8 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useClientDetail } from '@/features/clients/hooks/use-client-detail'
-import type { ClientDetail } from '@/types/client.types'
+import { ContactsTab, buildInitialContacts } from '@/features/clients/components/contacts-tab'
+import type { ClientDetail, ContactRow } from '@/types/client.types'
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -49,6 +50,12 @@ export default function ClientDetailPage() {
   const navigate = useNavigate()
   const { data: client, isLoading, isError, error } = useClientDetail(id)
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
+  const [contacts, setContacts] = useState<ContactRow[]>([])
+
+  useEffect(() => {
+    if (client) setContacts(buildInitialContacts(client))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client?.id])
 
   if (isLoading) {
     return (
@@ -92,12 +99,12 @@ export default function ClientDetailPage() {
         <span className="text-[#1c1b1b]">{client.name}</span>
       </div>
 
-      <ClientHeader client={client} />
+      <ClientHeader client={client} onAddContact={() => setActiveTab('contacts')} />
 
       <div>
         <div className="flex flex-wrap gap-6 border-b border-[#e5e7eb]">
           {TABS.map((tab) => {
-            const count = tabCount(client, tab.key)
+            const count = tabCount(client, contacts.length, tab.key)
             return (
               <button
                 key={tab.key}
@@ -120,6 +127,8 @@ export default function ClientDetailPage() {
         <div className="mt-6">
           {activeTab === 'overview' ? (
             <OverviewTab client={client} />
+          ) : activeTab === 'contacts' ? (
+            <ContactsTab contacts={contacts} onContactsChange={setContacts} />
           ) : (
             <EmptyTab tab={activeTab} />
           )}
@@ -129,10 +138,10 @@ export default function ClientDetailPage() {
   )
 }
 
-function tabCount(client: ClientDetail, tab: TabKey): number | null {
+function tabCount(client: ClientDetail, contactsCount: number, tab: TabKey): number | null {
   switch (tab) {
     case 'contacts':
-      return client.totals.contacts
+      return contactsCount
     case 'projects':
       return client.totals.projects
     case 'jobs':
@@ -144,7 +153,7 @@ function tabCount(client: ClientDetail, tab: TabKey): number | null {
   }
 }
 
-function ClientHeader({ client }: { client: ClientDetail }) {
+function ClientHeader({ client, onAddContact }: { client: ClientDetail; onAddContact: () => void }) {
   return (
     <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -211,7 +220,7 @@ function ClientHeader({ client }: { client: ClientDetail }) {
           </button>
           <button
             type="button"
-            onClick={() => notConnected('Adding a contact')}
+            onClick={onAddContact}
             className="flex h-10 items-center gap-2 rounded-xl border border-[#c2c6d8] bg-white px-4 font-inter text-sm font-semibold text-[#1c1b1b] hover:bg-gray-50"
           >
             <UserPlus className="h-4 w-4" />
@@ -513,11 +522,7 @@ function OverviewTab({ client }: { client: ClientDetail }) {
   )
 }
 
-const EMPTY_TAB_COPY: Record<Exclude<TabKey, 'overview'>, { title: string; description: string }> = {
-  contacts: {
-    title: 'No additional contacts yet',
-    description: 'Contacts you add for this client will appear here.',
-  },
+const EMPTY_TAB_COPY: Record<Exclude<TabKey, 'overview' | 'contacts'>, { title: string; description: string }> = {
   projects: {
     title: 'No projects yet',
     description: 'Projects linked to this client will appear here once the Projects feature is connected.',
@@ -540,7 +545,7 @@ const EMPTY_TAB_COPY: Record<Exclude<TabKey, 'overview'>, { title: string; descr
   },
 }
 
-function EmptyTab({ tab }: { tab: Exclude<TabKey, 'overview'> }) {
+function EmptyTab({ tab }: { tab: Exclude<TabKey, 'overview' | 'contacts'> }) {
   const copy = EMPTY_TAB_COPY[tab]
   return (
     <div className="rounded-2xl border border-[#e5e7eb] bg-white py-16 text-center">

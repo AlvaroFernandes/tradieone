@@ -3,6 +3,16 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.18.0] - 2026-07-10
+
+### ✨ Features
+
+- Client Details "Contacts" tab now matches the target design: contact table (name/avatar, job title, PRIMARY badge, type, email, phone/mobile, primary checkmark, row actions), search-by-name/email, "+ Add Contact" dashed row, pagination footer, and a "Need to add more contacts?" bulk-import banner
+- New `AddContactModal` (slide-in panel, react-hook-form + zod) adds a contact to the client-side contact list — name, job title, contact type, email, phone, mobile, and a "set as primary" toggle
+- Contacts added/removed/re-primaried in this tab are local-only (no `POST`/`DELETE` contacts endpoint exists yet) and now drive the "Contacts (N)" tab-bar count in real time
+- Header's "Add Contact" button now switches to the Contacts tab instead of showing a placeholder toast
+- Verified in a headless browser end-to-end: opened the tab, added a contact through the modal, and confirmed it appears in the table with no console errors — tested against a throwaway mock-data harness since there's no dev login for the real tdoserver backend
+
 ## [1.17.0] - 2026-07-10
 
 ### ✨ Features

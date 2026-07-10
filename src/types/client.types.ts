@@ -43,6 +43,33 @@ export interface ClientRow {
   status: 'Active' | 'Inactive'
 }
 
+export const CONTACT_TYPES = ['Management', 'Billing', 'Site Contact', 'Other'] as const
+export type ContactType = (typeof CONTACT_TYPES)[number]
+
+export const contactSchema = z.object({
+  name: z.string().min(1, 'Contact name is required'),
+  jobTitle: z.string().optional(),
+  contactType: z.enum(CONTACT_TYPES, { error: () => ({ message: 'Select a contact type' }) }),
+  email: z.email('Invalid email address').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  mobile: z.string().optional(),
+  isPrimary: z.boolean(),
+})
+
+export type ContactFormData = z.infer<typeof contactSchema>
+
+export interface ContactRow {
+  id: string
+  initials: string
+  name: string
+  jobTitle: string | null
+  contactType: ContactType
+  email: string | null
+  phone: string | null
+  mobile: string | null
+  isPrimary: boolean
+}
+
 export interface ClientDetail {
   id: string
   initials: string
