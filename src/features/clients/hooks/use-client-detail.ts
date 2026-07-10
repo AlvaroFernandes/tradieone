@@ -12,6 +12,20 @@ function formatAddress(dto: ClientDto): string | null {
   return parts.length ? parts.join(', ') : null
 }
 
+function formatAddressLines(dto: ClientDto): string[] | null {
+  const streetLine = [dto.addressLine1, dto.addressLine2]
+    .map((p) => p?.trim())
+    .filter(Boolean)
+    .join(' ')
+  const cityLine = [dto.suburb, dto.state, dto.postcode]
+    .map((p) => p?.trim())
+    .filter(Boolean)
+    .join(' ')
+  const countryLine = dto.country?.trim()
+  const lines = [streetLine, cityLine, countryLine].filter((line): line is string => !!line)
+  return lines.length ? lines : null
+}
+
 function formatClientSince(createdOnUtc: string): string {
   const date = new Date(createdOnUtc)
   if (Number.isNaN(date.getTime())) return '—'
@@ -31,6 +45,7 @@ export function mapClientDtoToDetail(dto: ClientDto): ClientDetail {
     phone: dto.phone?.trim() || null,
     email: dto.email?.trim() || null,
     address: formatAddress(dto),
+    addressLines: formatAddressLines(dto),
     abn: dto.abn?.trim() || null,
     paymentTerms: dto.paymentTerms?.trim() || null,
     contact: {

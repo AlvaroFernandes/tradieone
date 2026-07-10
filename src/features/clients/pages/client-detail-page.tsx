@@ -329,9 +329,22 @@ function Card({
   )
 }
 
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+function InfoRow({
+  label,
+  value,
+  align = 'center',
+}: {
+  label: string
+  value: React.ReactNode
+  align?: 'center' | 'start'
+}) {
   return (
-    <div className="flex items-center justify-between py-2 font-inter text-sm">
+    <div
+      className={cn(
+        'flex justify-between py-2 font-inter text-sm',
+        align === 'center' ? 'items-center' : 'items-start',
+      )}
+    >
       <span className="text-[#9ca3af]">{label}</span>
       <span className="font-semibold text-[#1c1b1b]">{value}</span>
     </div>
@@ -363,7 +376,23 @@ function OverviewTab({ client }: { client: ClientDetail }) {
           <InfoRow label="Payment Terms" value={client.paymentTerms ?? '—'} />
           <InfoRow label="Currency" value="AUD - Australian Dollar" />
           <InfoRow label="Phone" value={client.phone ?? '—'} />
-          <InfoRow label="Address" value={client.address ?? '—'} />
+          <InfoRow
+            label="Address"
+            align="start"
+            value={
+              client.addressLines ? (
+                <span className="block text-right">
+                  {client.addressLines.map((line, i) => (
+                    <span key={i} className="block">
+                      {line}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                '—'
+              )
+            }
+          />
         </div>
       </Card>
 

@@ -3,6 +3,14 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.19.0] - 2026-07-10
+
+### ✨ Features
+
+- Client Details → Client Information card now formats the address as three stacked, right-aligned lines (street, "suburb state postcode", country) instead of one comma-joined line, matching the target design
+- Added `addressLines` to `ClientDetail` / `mapClientDtoToDetail`; the header's inline single-line address is unchanged
+- Verified visually in a headless browser against a mock client with a full AU address — no console errors
+
 ## [1.18.0] - 2026-07-10
 
 ### ✨ Features

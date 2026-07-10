@@ -80,6 +80,7 @@ export interface ClientDetail {
   phone: string | null
   email: string | null
   address: string | null
+  addressLines: string[] | null
   abn: string | null
   paymentTerms: string | null
   contact: {
