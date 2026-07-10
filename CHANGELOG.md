@@ -3,6 +3,18 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.21.0] - 2026-07-10
+
+### ✨ Features
+
+- Sidebar now matches the confirmed target design for both states: collapsed shows a shield-with-wrench brand mark next to the expand toggle (previously blank space), and nav/Settings/Support icons are centered in the rail instead of left-aligned
+- Removed the "Sign out" footer item to match the design exactly (confirmed with the user) — logging out isn't reachable from the UI until the top-header user menu is built
+- Verified both states visually in a headless browser — no console errors
+
+### ⚠️ Breaking
+
+- No visible way to sign out currently; auth still expires/redirects automatically on a 401
+
 ## [1.20.0] - 2026-07-10
 
 ### ✨ Features

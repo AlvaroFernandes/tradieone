@@ -15,11 +15,19 @@ import {
   CirclePlus,
   Settings,
   HelpCircle,
-  LogOut,
+  Shield,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
-import { useAuthStore } from '@/store/auth.store'
 import { cn } from '@/lib/utils'
+
+function BrandMark({ className }: { className?: string }) {
+  return (
+    <div className={cn('relative flex shrink-0 items-center justify-center', className)}>
+      <Shield className="h-full w-full text-white" fill="white" />
+      <Wrench className="absolute h-[42%] w-[42%] rotate-[-15deg] text-sidebar" strokeWidth={2.5} />
+    </div>
+  )
+}
 
 interface NavItem {
   to: string
@@ -44,7 +52,6 @@ const IMPLEMENTED_ROUTES = new Set(['/dashboard', '/clients'])
 
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUIStore()
-  const clearAuth = useAuthStore((s) => s.clearAuth)
   const location = useLocation()
 
   return (
@@ -55,8 +62,10 @@ export function Sidebar() {
       )}
     >
       {/* Header */}
-      <div className="flex items-start justify-between p-4">
-        {!sidebarCollapsed && (
+      <div className="flex items-center justify-between p-4">
+        {sidebarCollapsed ? (
+          <BrandMark className="h-9 w-9" />
+        ) : (
           <div>
             <p className="font-manrope text-lg font-extrabold leading-tight text-white">TradieOne</p>
             <p className="font-inter text-[10px] font-semibold uppercase tracking-[0.6px] text-white/40">
@@ -66,10 +75,7 @@ export function Sidebar() {
         )}
         <button
           onClick={toggleSidebar}
-          className={cn(
-            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/90 text-sidebar transition-colors hover:bg-white',
-            sidebarCollapsed && 'mx-auto',
-          )}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/90 text-sidebar transition-colors hover:bg-white"
           aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {sidebarCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
@@ -92,7 +98,8 @@ export function Sidebar() {
             )
 
             const className = cn(
-              'flex items-center gap-3 rounded-xl px-3 py-2.5 font-inter text-sm transition-colors',
+              'flex items-center gap-3 rounded-xl py-2.5 font-inter text-sm transition-colors',
+              sidebarCollapsed ? 'justify-center px-0' : 'px-3',
               isActive
                 ? 'bg-sidebar-accent font-semibold text-white'
                 : isImplemented
@@ -134,26 +141,24 @@ export function Sidebar() {
         <div className="pt-2">
           <span
             title={sidebarCollapsed ? 'Settings' : 'Coming soon'}
-            className="flex cursor-default items-center gap-3 rounded-xl px-3 py-2.5 font-inter text-sm text-white/30"
+            className={cn(
+              'flex cursor-default items-center gap-3 rounded-xl py-2.5 font-inter text-sm text-white/30',
+              sidebarCollapsed ? 'justify-center px-0' : 'px-3',
+            )}
           >
             <Settings className="h-5 w-5 shrink-0" />
             {!sidebarCollapsed && 'Settings'}
           </span>
           <span
             title={sidebarCollapsed ? 'Support' : 'Coming soon'}
-            className="flex cursor-default items-center gap-3 rounded-xl px-3 py-2.5 font-inter text-sm text-white/30"
+            className={cn(
+              'flex cursor-default items-center gap-3 rounded-xl py-2.5 font-inter text-sm text-white/30',
+              sidebarCollapsed ? 'justify-center px-0' : 'px-3',
+            )}
           >
             <HelpCircle className="h-5 w-5 shrink-0" />
             {!sidebarCollapsed && 'Support'}
           </span>
-          <button
-            onClick={clearAuth}
-            title={sidebarCollapsed ? 'Sign out' : undefined}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 font-inter text-sm text-white/70 transition-colors hover:bg-sidebar-accent/60 hover:text-white"
-          >
-            <LogOut className="h-5 w-5 shrink-0" />
-            {!sidebarCollapsed && 'Sign out'}
-          </button>
         </div>
       </div>
     </aside>
