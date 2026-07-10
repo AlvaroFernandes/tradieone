@@ -35,7 +35,7 @@ export interface ClientDto {
   totalAmount: number | null
 }
 
-function getInitials(name: string) {
+export function getInitials(name: string) {
   return (
     name
       .split(' ')

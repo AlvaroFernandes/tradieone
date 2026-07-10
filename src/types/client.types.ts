@@ -42,3 +42,36 @@ export interface ClientRow {
   invoiceLabel: string
   status: 'Active' | 'Inactive'
 }
+
+export interface ClientDetail {
+  id: string
+  initials: string
+  name: string
+  type: ClientType
+  status: 'Active' | 'Inactive'
+  clientSinceLabel: string
+  phone: string | null
+  email: string | null
+  address: string | null
+  abn: string | null
+  paymentTerms: string | null
+  contact: {
+    name: string
+    jobTitle: string | null
+    email: string | null
+    phone: string | null
+    mobile: string | null
+  }
+  notes: string | null
+  totals: {
+    contacts: number
+    projects: number
+    jobs: number
+    totalInvoices: number
+    paidInvoices: number
+    overdueInvoices: number
+    totalInvoiceAmount: number
+    paidAmount: number
+    outstandingAmount: number
+  }
+}

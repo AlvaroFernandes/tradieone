@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
   Building2,
   ChevronDown,
@@ -6,10 +8,13 @@ import {
   ChevronRight,
   Download,
   DollarSign,
+  Eye,
   Loader2,
   MoreHorizontal,
+  Pencil,
   Plus,
   Search,
+  Trash2,
   TrendingUp,
   Upload,
   Users,
@@ -23,6 +28,7 @@ import type { ClientRow, NewClientFormData } from '@/types/client.types'
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 
 export default function ClientsPage() {
+  const navigate = useNavigate()
   const { data: fetchedClients, isLoading, isError, error } = useClients()
   const [clients, setClients] = useState<ClientRow[]>([])
   const [search, setSearch] = useState('')
@@ -241,7 +247,11 @@ export default function ClientsPage() {
               {!isLoading && !isError && pageRows.map((client) => (
                 <tr key={client.id} className="border-b border-[#e5e7eb] last:border-0">
                   <td className="py-4 pr-4">
-                    <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/clients/${client.id}`)}
+                      className="flex items-center gap-3 text-left hover:opacity-80"
+                    >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#001849] font-inter text-xs font-semibold text-white">
                         {client.initials}
                       </div>
@@ -251,7 +261,7 @@ export default function ClientsPage() {
                           {client.contactName} • {client.contactEmail}
                         </p>
                       </div>
-                    </div>
+                    </button>
                   </td>
                   <td className="py-4 pr-4">
                     <span
@@ -279,12 +289,45 @@ export default function ClientsPage() {
                     </span>
                   </td>
                   <td className="py-4">
-                    <button
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-[#9ca3af] hover:bg-gray-100"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
+                    <DropdownMenu.Root>
+                      <DropdownMenu.Trigger asChild>
+                        <button
+                          type="button"
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-[#9ca3af] hover:bg-gray-100"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenu.Trigger>
+                      <DropdownMenu.Portal>
+                        <DropdownMenu.Content
+                          align="end"
+                          sideOffset={6}
+                          className="z-50 min-w-[180px] rounded-xl border border-[#e5e7eb] bg-white p-1.5 font-inter text-sm shadow-lg"
+                        >
+                          <DropdownMenu.Item
+                            onSelect={() => navigate(`/clients/${client.id}`)}
+                            className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[#1c1b1b] outline-none hover:bg-gray-50"
+                          >
+                            <Eye className="h-4 w-4" />
+                            View Details
+                          </DropdownMenu.Item>
+                          <DropdownMenu.Item
+                            onSelect={() => toast.info("Editing a client isn't connected to the server yet.")}
+                            className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[#1c1b1b] outline-none hover:bg-gray-50"
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Edit Client
+                          </DropdownMenu.Item>
+                          <DropdownMenu.Item
+                            onSelect={() => toast.info("Deleting a client isn't connected to the server yet.")}
+                            className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-red-600 outline-none hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete Client
+                          </DropdownMenu.Item>
+                        </DropdownMenu.Content>
+                      </DropdownMenu.Portal>
+                    </DropdownMenu.Root>
                   </td>
                 </tr>
               ))}

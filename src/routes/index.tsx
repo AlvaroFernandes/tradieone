@@ -12,6 +12,7 @@ const TokenPage = lazy(() => import('@/features/auth/pages/token-page'))
 const AppLayout = lazy(() => import('@/components/layout/app-layout'))
 const DashboardPage = lazy(() => import('@/features/dashboard/pages/dashboard-page'))
 const ClientsPage = lazy(() => import('@/features/clients/pages/clients-page'))
+const ClientDetailPage = lazy(() => import('@/features/clients/pages/client-detail-page'))
 
 function PageLoader() {
   return (
@@ -69,6 +70,7 @@ export function AppRoutes() {
         >
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/clients" element={<ClientsPage />} />
+          <Route path="/clients/:id" element={<ClientDetailPage />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Route>
 

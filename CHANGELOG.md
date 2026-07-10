@@ -3,6 +3,17 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.17.0] - 2026-07-10
+
+### ✨ Features
+
+- New Client Details page (`/clients/:id`) matching the target design: header with avatar, name, status/type badges, "client since" date, phone/email/address, and Edit Client / Add Contact / More actions
+- Overview tab with Client Information, Primary Contact (with working `mailto:`/`tel:` Send Email and Call buttons), Financial Summary, Additional Information (locally-editable notes), and Recent Activity cards
+- Contacts / Projects / Jobs / Invoices / Activity / Notes & Files tabs render honest empty states — none of these have backend endpoints yet, so no data is faked
+- Clicking a client's name or the row's "..." menu on the Clients list now navigates to its detail page; the kebab menu also gets Edit/Delete entries (not wired to the server yet)
+- Added `useClientDetail(id)` hook — shares the existing `useClients()` TanStack Query cache (same query key) and selects the matching client client-side, since there's no `GET /api/Clients/{id}` endpoint yet
+- Edit Client, Add Contact, More menu actions (Archive/Delete), and View Finance/Activity links are UI-complete but not yet wired to the server
+
 ## [1.16.0] - 2026-07-09
 
 ### ✨ Features
