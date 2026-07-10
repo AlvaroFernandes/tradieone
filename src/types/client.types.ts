@@ -70,6 +70,29 @@ export interface ContactRow {
   isPrimary: boolean
 }
 
+export const CLIENT_STATUSES = ['Active', 'Inactive'] as const
+export type ClientStatus = (typeof CLIENT_STATUSES)[number]
+
+export const editClientSchema = z
+  .object({
+    clientName: z.string().min(1, 'Client name is required'),
+    clientType: z.enum(CLIENT_TYPES, { error: () => ({ message: 'Select a client type' }) }),
+    status: z.enum(CLIENT_STATUSES),
+    email: z.email('Invalid email address').optional().or(z.literal('')),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    abn: z.string().optional(),
+    paymentTerms: z.string().optional(),
+    gstStatus: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .refine((data) => data.clientType !== 'Commercial' || !!data.abn?.trim(), {
+    message: 'ABN is required for commercial clients',
+    path: ['abn'],
+  })
+
+export type EditClientFormData = z.infer<typeof editClientSchema>
+
 export interface ClientDetail {
   id: string
   initials: string

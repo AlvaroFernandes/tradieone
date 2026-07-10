@@ -3,6 +3,15 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.20.0] - 2026-07-10
+
+### ✨ Features
+
+- New `EditClientModal` for the Client Details page — a right-side slide-in panel matching the target design, prefilled with the client's current name, type, status, email, phone, address, ABN, payment terms, GST status and notes, plus an avatar preview/upload control
+- The header's "Edit Client" button and the "..." kebab menu's "Edit Client" item now open this modal instead of a placeholder toast
+- Saving patches the shared `['clients', tenantId]` query cache directly (client-side only — no `PUT`/`PATCH` clients endpoint exists yet), so edits show up immediately on both the Clients list and this detail page; a toast makes clear it isn't persisted server-side yet
+- Verified in a headless browser against a mock client: fields prefill correctly, editing and submitting produces the expected payload, no console errors
+
 ## [1.19.0] - 2026-07-10
 
 ### ✨ Features

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
   Archive,
@@ -21,9 +22,12 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/store/auth.store'
 import { useClientDetail } from '@/features/clients/hooks/use-client-detail'
+import type { ClientDto } from '@/features/clients/hooks/use-clients'
 import { ContactsTab, buildInitialContacts } from '@/features/clients/components/contacts-tab'
-import type { ClientDetail, ContactRow } from '@/types/client.types'
+import { EditClientModal } from '@/features/clients/components/edit-client-modal'
+import type { ClientDetail, ContactRow, EditClientFormData } from '@/types/client.types'
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -48,14 +52,45 @@ function notConnected(feature: string) {
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const tenantId = useAuthStore((s) => s.tenantId)
   const { data: client, isLoading, isError, error } = useClientDetail(id)
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const [contacts, setContacts] = useState<ContactRow[]>([])
+  const [showEditModal, setShowEditModal] = useState(false)
 
   useEffect(() => {
     if (client) setContacts(buildInitialContacts(client))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client?.id])
+
+  function handleSaveClient(data: EditClientFormData) {
+    queryClient.setQueryData<ClientDto[]>(['clients', tenantId], (old) =>
+      old?.map((dto) =>
+        String(dto.clientId) === id
+          ? {
+              ...dto,
+              name: data.clientName,
+              clientType: data.clientType,
+              status: data.status,
+              email: data.email?.trim() || null,
+              phone: data.phone?.trim() || null,
+              addressLine1: data.address?.trim() || null,
+              addressLine2: null,
+              suburb: null,
+              state: null,
+              postcode: null,
+              country: null,
+              abn: data.abn?.trim() || null,
+              paymentTerms: data.paymentTerms?.trim() || null,
+              notes: data.notes?.trim() || null,
+            }
+          : dto,
+      ),
+    )
+    setShowEditModal(false)
+    toast.success('Client updated locally — saving to the server isn’t connected yet.')
+  }
 
   if (isLoading) {
     return (
@@ -99,7 +134,11 @@ export default function ClientDetailPage() {
         <span className="text-[#1c1b1b]">{client.name}</span>
       </div>
 
-      <ClientHeader client={client} onAddContact={() => setActiveTab('contacts')} />
+      <ClientHeader
+        client={client}
+        onAddContact={() => setActiveTab('contacts')}
+        onEdit={() => setShowEditModal(true)}
+      />
 
       <div>
         <div className="flex flex-wrap gap-6 border-b border-[#e5e7eb]">
@@ -134,6 +173,14 @@ export default function ClientDetailPage() {
           )}
         </div>
       </div>
+
+      {showEditModal && (
+        <EditClientModal
+          client={client}
+          onClose={() => setShowEditModal(false)}
+          onSave={handleSaveClient}
+        />
+      )}
     </div>
   )
 }
@@ -153,7 +200,15 @@ function tabCount(client: ClientDetail, contactsCount: number, tab: TabKey): num
   }
 }
 
-function ClientHeader({ client, onAddContact }: { client: ClientDetail; onAddContact: () => void }) {
+function ClientHeader({
+  client,
+  onAddContact,
+  onEdit,
+}: {
+  client: ClientDetail
+  onAddContact: () => void
+  onEdit: () => void
+}) {
   return (
     <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -172,7 +227,7 @@ function ClientHeader({ client, onAddContact }: { client: ClientDetail; onAddCon
               >
                 {client.status}
               </span>
-              <ClientMenu />
+              <ClientMenu onEdit={onEdit} />
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-inter text-sm text-[#424656]">
               <span
@@ -212,7 +267,7 @@ function ClientHeader({ client, onAddContact }: { client: ClientDetail; onAddCon
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => notConnected('Editing a client')}
+            onClick={onEdit}
             className="flex h-10 items-center gap-2 rounded-xl border border-[#c2c6d8] bg-white px-4 font-inter text-sm font-semibold text-[#1c1b1b] hover:bg-gray-50"
           >
             <Pencil className="h-4 w-4" />
@@ -265,7 +320,7 @@ function ClientHeader({ client, onAddContact }: { client: ClientDetail; onAddCon
   )
 }
 
-function ClientMenu() {
+function ClientMenu({ onEdit }: { onEdit: () => void }) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -283,7 +338,7 @@ function ClientMenu() {
           className="z-50 min-w-[190px] rounded-xl border border-[#e5e7eb] bg-white p-1.5 font-inter text-sm shadow-lg"
         >
           <DropdownMenu.Item
-            onSelect={() => notConnected('Editing a client')}
+            onSelect={onEdit}
             className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[#1c1b1b] outline-none hover:bg-gray-50"
           >
             <Pencil className="h-4 w-4" />
