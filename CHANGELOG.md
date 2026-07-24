@@ -3,6 +3,15 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.22.0] - 2026-07-24
+
+### ✨ Features
+
+- Wired the "New Client" form to the real API: `useCreateClient` posts to `POST /api/clients` with the confirmed payload shape (including the `contact.moile` field name as specified by the API contract)
+- On success, invalidates the `['clients', tenantId]` query so the new client shows up in the list without a manual refetch; shows a success/error toast instead of the old "not connected yet" placeholder
+- The single free-text "Address" field currently maps to `addressLine1`; `addressLine2`/`suburb`/`state`/`postcode` are sent empty and `country` defaults to `"Australia"` until the form is split into structured address fields
+- Typecheck and lint verified clean; full browser testing against the live backend was not performed (requires real login credentials, no mock backend/tests exist in the repo)
+
 ## [1.21.0] - 2026-07-10
 
 ### ✨ Features

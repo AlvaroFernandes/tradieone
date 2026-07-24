@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useClients } from '@/features/clients/hooks/use-clients'
+import { useCreateClient } from '@/features/clients/hooks/use-create-client'
 import { NewClientModal } from '@/features/clients/components/new-client-modal'
 import type { ClientRow, NewClientFormData } from '@/types/client.types'
 
@@ -30,6 +31,7 @@ const ROWS_PER_PAGE_OPTIONS = [10, 25, 50]
 export default function ClientsPage() {
   const navigate = useNavigate()
   const { data: fetchedClients, isLoading, isError, error } = useClients()
+  const createClient = useCreateClient()
   const [clients, setClients] = useState<ClientRow[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All')
@@ -79,28 +81,13 @@ export default function ClientsPage() {
     setPage(1)
   }
 
-  function handleCreateClient(data: NewClientFormData) {
-    const newRow: ClientRow = {
-      id: crypto.randomUUID(),
-      initials: data.clientName
-        .split(' ')
-        .map((w) => w[0])
-        .join('')
-        .slice(0, 3)
-        .toUpperCase(),
-      name: data.clientName,
-      contactName: data.primaryContactSameAsClient ? data.clientName : data.contactName,
-      contactEmail: (data.primaryContactSameAsClient ? data.email : data.contactEmail) || '—',
-      type: data.clientType,
-      projects: 0,
-      jobs: 0,
-      outstanding: 0,
-      invoiceLabel: 'Up to date',
-      status: 'Active',
+  async function handleCreateClient(data: NewClientFormData) {
+    try {
+      await createClient.mutateAsync(data)
+      setShowNewClientModal(false)
+    } catch {
+      // error toast already shown by the mutation's onError handler
     }
-    setClients((prev) => [newRow, ...prev])
-    setShowNewClientModal(false)
-    toast.success('Client added locally — saving to the server is not connected yet.')
   }
 
   return (
