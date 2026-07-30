@@ -5,8 +5,7 @@ import { tdoApi } from '@/lib/api'
 import { useAuthStore } from '@/store/auth.store'
 import type { NewClientFormData } from '@/types/client.types'
 
-interface CreateClientPayload {
-  tenantId: string
+interface CreateClientDto {
   clientName: string
   clientType: string
   avatarUrl: string
@@ -31,29 +30,36 @@ interface CreateClientPayload {
   }
 }
 
+interface CreateClientPayload {
+  tenantId: string
+  clientDto: CreateClientDto
+}
+
 function buildPayload(data: NewClientFormData, tenantId: string): CreateClientPayload {
   return {
     tenantId,
-    clientName: data.clientName,
-    clientType: data.clientType,
-    avatarUrl: '',
-    phone: data.phone || '',
-    email: data.email || '',
-    addressLine1: data.address || '',
-    addressLine2: '',
-    suburb: '',
-    state: '',
-    postcode: '',
-    country: 'Australia',
-    abn: data.abn || '',
-    paymentTerms: data.paymentTerms || '',
-    isGSTRegistered: data.defaultGst === 'Tax Registered',
-    notes: data.notes || '',
-    contact: {
-      isPrimary: true,
-      name: data.primaryContactSameAsClient ? data.clientName : data.contactName,
-      moile: (data.primaryContactSameAsClient ? data.phone : data.contactMobile) || '',
-      email: (data.primaryContactSameAsClient ? data.email : data.contactEmail) || '',
+    clientDto: {
+      clientName: data.clientName,
+      clientType: data.clientType,
+      avatarUrl: '',
+      phone: data.phone || '',
+      email: data.email || '',
+      addressLine1: data.address || '',
+      addressLine2: '',
+      suburb: '',
+      state: '',
+      postcode: '',
+      country: 'Australia',
+      abn: data.abn || '',
+      paymentTerms: data.paymentTerms || '',
+      isGSTRegistered: data.defaultGst === 'Tax Registered',
+      notes: data.notes || '',
+      contact: {
+        isPrimary: true,
+        name: data.primaryContactSameAsClient ? data.clientName : data.contactName,
+        moile: (data.primaryContactSameAsClient ? data.phone : data.contactMobile) || '',
+        email: (data.primaryContactSameAsClient ? data.email : data.contactEmail) || '',
+      },
     },
   }
 }
@@ -63,8 +69,10 @@ export function useCreateClient() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: NewClientFormData) =>
-      tdoApi.post('/api/clients', buildPayload(data, tenantId ?? '')).then((r) => r.data),
+    mutationFn: (data: NewClientFormData) => {
+      if (!tenantId) throw new Error('No tenant found for your account. Please sign in again.')
+      return tdoApi.post('/api/clients', buildPayload(data, tenantId)).then((r) => r.data)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients', tenantId] })
       toast.success('Client created successfully.')
@@ -80,6 +88,8 @@ export function useCreateClient() {
           Object.values(data?.errors ?? {}).flat().join(' ') ||
           'Failed to create client.'
         toast.error(String(msg))
+      } else if (error instanceof Error) {
+        toast.error(error.message)
       } else {
         toast.error('Something went wrong. Please try again.')
       }

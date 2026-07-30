@@ -3,6 +3,14 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.24.0] - 2026-07-30
+
+### 🐛 Fixes
+
+- `POST /api/clients` now nests the new-client fields under a `clientDto` object (with `tenantId` as a sibling) to match the backend's actual request contract — the previous flat payload triggered a `"clientDto field is required"` validation error on every submit
+- The create-client mutation now fails fast with a clear toast ("No tenant found for your account. Please sign in again.") when `tenantId` is missing, instead of letting an empty string reach the API and surface as an opaque `Guid` conversion error
+- Root cause of the missing `tenantId`: the plain login flow never populates it (only registration does) — tracked separately, blocked pending backend confirmation on how to fetch a logged-in user's tenant
+
 ## [1.23.0] - 2026-07-30
 
 ### ✨ Features
