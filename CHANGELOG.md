@@ -3,6 +3,12 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.26.0] - 2026-07-30
+
+### 🐛 Fixes
+
+- The top bar's notification bell no longer always shows a red unread dot — it's now gated behind a `hasUnreadNotifications` flag, hardcoded to `false` until a real notifications API exists to drive it
+
 ## [1.25.0] - 2026-07-30
 
 ### ✨ Features

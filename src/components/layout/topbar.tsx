@@ -16,6 +16,8 @@ export function Topbar() {
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const name = user?.name || 'User'
   const role = user?.role
+  // No notifications API exists yet — always empty until one is wired up.
+  const hasUnreadNotifications = false
 
   function handleLogout() {
     clearAuth()
@@ -40,7 +42,9 @@ export function Topbar() {
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
+          {hasUnreadNotifications && (
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
+          )}
         </button>
 
         <DropdownMenu.Root>
