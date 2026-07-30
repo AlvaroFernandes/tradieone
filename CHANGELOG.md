@@ -3,6 +3,14 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.23.0] - 2026-07-30
+
+### ✨ Features
+
+- Added a top bar (`Topbar`) shown above every authenticated page: a search input on the left (visual only — not wired to real search yet), and a notification bell plus the logged-in user's name/role and an initials avatar grouped on the right
+- `AppLayout` restructured so the sidebar stays fixed on the left while the top bar and page content stack in a column to its right
+- Note: the role shown under the user's name currently reflects the hardcoded `'user'` value set at login (`login-page.tsx`) rather than a real job title from the backend
+
 ## [1.22.0] - 2026-07-24
 
 ### ✨ Features
