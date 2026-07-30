@@ -3,6 +3,12 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.25.0] - 2026-07-30
+
+### ✨ Features
+
+- Clicking the user name or avatar in the top bar now opens a dropdown with "My Profile" (disabled placeholder for the future user-info page) and "Log Out", which clears the auth store and redirects to `/login`
+
 ## [1.24.0] - 2026-07-30
 
 ### 🐛 Fixes
