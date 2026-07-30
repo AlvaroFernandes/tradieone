@@ -10,12 +10,27 @@ function getInitials(name: string) {
   return (parts[0]![0] + parts[parts.length - 1]![0]).toUpperCase()
 }
 
+// The login response doesn't include the user's real name yet — derive a
+// friendlier display name from their email instead of a generic "User".
+function getDisplayName(name: string | undefined, email: string | undefined) {
+  if (name?.trim()) return name
+  const local = email?.split('@')[0] ?? ''
+  const words = local
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0]!.toUpperCase() + w.slice(1))
+  return words.length ? words.join(' ') : 'User'
+}
+
 export function Topbar() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.clearAuth)
-  const name = user?.name || 'User'
-  const role = user?.role
+  const name = getDisplayName(user?.name, user?.email)
+  // 'user' is a hardcoded placeholder set at login/register, not a real job
+  // title — hide it rather than show confusing placeholder data.
+  const role = user?.role && user.role !== 'user' ? user.role : null
   // No notifications API exists yet — always empty until one is wired up.
   const hasUnreadNotifications = false
 

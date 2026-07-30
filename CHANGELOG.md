@@ -3,6 +3,13 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.27.0] - 2026-07-30
+
+### 🐛 Fixes
+
+- Top bar no longer shows the generic "User" name and the placeholder role string `"user"` side by side — when the login response doesn't include a real name (it never does today), the display name is now derived from the account's email instead, and the role/job-title line is hidden when it's just the `'user'` placeholder rather than real data
+- This is a cosmetic stopgap: the login flow still doesn't fetch a real user profile (name, job title, tenantId), tracked as a blocker pending backend confirmation
+
 ## [1.26.0] - 2026-07-30
 
 ### 🐛 Fixes
