@@ -6,7 +6,7 @@ import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Briefcase, ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
-import { api } from '@/lib/api'
+import { api, tdoApi } from '@/lib/api'
 import { useAuthStore } from '@/store/auth.store'
 import { loginSchema, type LoginFormData } from '@/types/auth.types'
 import { cn } from '@/lib/utils'
@@ -15,9 +15,20 @@ interface LoginResponse {
   token: string
 }
 
+// Response shape isn't confirmed yet — handle both a bare GUID string and a
+// { tenantId } wrapper object.
+function extractTenantId(raw: unknown): string {
+  if (typeof raw === 'string') return raw
+  if (raw && typeof raw === 'object' && 'tenantId' in raw) {
+    return String((raw as { tenantId?: unknown }).tenantId ?? '')
+  }
+  return ''
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const setTenantId = useAuthStore((s) => s.setTenantId)
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
 
@@ -30,10 +41,25 @@ export default function LoginPage() {
   })
 
   const { mutate: login, isPending } = useMutation({
-    mutationFn: ({ email, password }: LoginFormData) =>
-      api.post<LoginResponse>('/login', { username: email, password }).then((r) => r.data),
-    onSuccess: ({ token }, { email }) => {
+    mutationFn: async ({ email, password }: LoginFormData) => {
+      const { token } = await api
+        .post<LoginResponse>('/login', { username: email, password })
+        .then((r) => r.data)
+
+      const tenantId = await tdoApi
+        .get('/api/users/GetTenantId', { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => extractTenantId(r.data))
+        .catch(() => '')
+
+      return { token, tenantId, email }
+    },
+    onSuccess: ({ token, tenantId, email }) => {
       setAuth(token, { id: '', name: '', email, role: 'user' })
+      if (tenantId) {
+        setTenantId(tenantId)
+      } else {
+        toast.error("Couldn't load your workspace. Some data may be missing — try refreshing.")
+      }
       navigate('/dashboard')
     },
     onError: (error) => {

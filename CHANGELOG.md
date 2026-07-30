@@ -3,6 +3,13 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.28.0] - 2026-07-30
+
+### ✨ Features
+
+- Login now fetches the account's `tenantId` from the new `GET /api/users/GetTenantId` endpoint right after `POST /login` succeeds, and stores it before navigating to `/dashboard` — fixes the empty client list / Guid conversion error that previously hit every non-registration login, since `tenantId` was never being set outside the sign-up flow
+- Response shape from `GetTenantId` wasn't confirmed, so parsing is defensive (accepts either a bare GUID string or a `{ tenantId }` object); if the call fails, login still proceeds but shows a toast warning that some data may be missing
+
 ## [1.27.0] - 2026-07-30
 
 ### 🐛 Fixes
