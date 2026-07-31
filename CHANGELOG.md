@@ -3,6 +3,12 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.29.0] - 2026-07-31
+
+### 🐛 Fixes
+
+- Reverted the `clientDto` payload wrapper added on 2026-07-30 — the confirmed Swagger contract for `POST /api/Clients` shows a flat body (`tenantId` alongside `clientName`, `clientType`, `contact`, etc.), matching what the app originally sent. The earlier `"clientDto field is required"` error was ASP.NET Core reporting its bound parameter name after the whole model failed to bind due to an empty `tenantId`, not a request-shape mismatch — now moot since login populates a real `tenantId`
+
 ## [1.28.0] - 2026-07-30
 
 ### ✨ Features

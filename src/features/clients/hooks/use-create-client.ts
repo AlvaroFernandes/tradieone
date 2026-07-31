@@ -5,7 +5,8 @@ import { tdoApi } from '@/lib/api'
 import { useAuthStore } from '@/store/auth.store'
 import type { NewClientFormData } from '@/types/client.types'
 
-interface CreateClientDto {
+interface CreateClientPayload {
+  tenantId: string
   clientName: string
   clientType: string
   avatarUrl: string
@@ -30,36 +31,29 @@ interface CreateClientDto {
   }
 }
 
-interface CreateClientPayload {
-  tenantId: string
-  clientDto: CreateClientDto
-}
-
 function buildPayload(data: NewClientFormData, tenantId: string): CreateClientPayload {
   return {
     tenantId,
-    clientDto: {
-      clientName: data.clientName,
-      clientType: data.clientType,
-      avatarUrl: '',
-      phone: data.phone || '',
-      email: data.email || '',
-      addressLine1: data.address || '',
-      addressLine2: '',
-      suburb: '',
-      state: '',
-      postcode: '',
-      country: 'Australia',
-      abn: data.abn || '',
-      paymentTerms: data.paymentTerms || '',
-      isGSTRegistered: data.defaultGst === 'Tax Registered',
-      notes: data.notes || '',
-      contact: {
-        isPrimary: true,
-        name: data.primaryContactSameAsClient ? data.clientName : data.contactName,
-        moile: (data.primaryContactSameAsClient ? data.phone : data.contactMobile) || '',
-        email: (data.primaryContactSameAsClient ? data.email : data.contactEmail) || '',
-      },
+    clientName: data.clientName,
+    clientType: data.clientType,
+    avatarUrl: '',
+    phone: data.phone || '',
+    email: data.email || '',
+    addressLine1: data.address || '',
+    addressLine2: '',
+    suburb: '',
+    state: '',
+    postcode: '',
+    country: 'Australia',
+    abn: data.abn || '',
+    paymentTerms: data.paymentTerms || '',
+    isGSTRegistered: data.defaultGst === 'Tax Registered',
+    notes: data.notes || '',
+    contact: {
+      isPrimary: true,
+      name: data.primaryContactSameAsClient ? data.clientName : data.contactName,
+      moile: (data.primaryContactSameAsClient ? data.phone : data.contactMobile) || '',
+      email: (data.primaryContactSameAsClient ? data.email : data.contactEmail) || '',
     },
   }
 }
