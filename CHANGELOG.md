@@ -3,6 +3,12 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.30.1] - 2026-08-02
+
+### 🔒 Security
+
+- Removed the hardcoded Kudu deployment username/password from `.github/workflows/main_tradieone.yml` (they were committed in plain text) and switched to `secrets.KUDU_USERNAME` / `secrets.KUDU_PASSWORD`; the exposed Azure deployment credentials were rotated and the new values stored as GitHub Actions secrets
+
 ## [1.30.0] - 2026-08-02
 
 ### ✨ Features

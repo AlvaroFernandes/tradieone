@@ -150,8 +150,8 @@ jobs:
         echo "🚀 Starting deployment to Azure..."
         
         KUDU_URL="https://tradieone-gpefeegnfqf5dwau.scm.australiaeast-01.azurewebsites.net"
-        USERNAME='$TradieOne'
-        PASSWORD='n7jBcellkKxSWcPslaw4wKTRlPgQMsxmz6BQmaf6BPWdfbtEduqYJn2Ax6uu'
+        USERNAME='${{ secrets.KUDU_USERNAME }}'
+        PASSWORD='${{ secrets.KUDU_PASSWORD }}'
         
         echo "📦 Creating deployment package..."
         cd dist
