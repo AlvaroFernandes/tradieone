@@ -3,6 +3,13 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.30.0] - 2026-08-02
+
+### ✨ Features
+
+- Built the Jobs page (`/jobs`, now enabled in the sidebar): stat cards (Active Jobs, Today's Schedule, Total Job Value, Overdue Jobs), search + status/priority/assigned-to filters, a sortable-looking table (job, client, scheduled date, priority, status, progress bar, stacked assignee avatars, row actions), and pagination — matching the target design
+- No Jobs API exists yet, so the table is backed by 42 generated local mock rows (`src/features/jobs/data/mock-jobs.ts`) rather than a real fetch; row actions (View/Edit/Duplicate/Delete) and the Import/New Job buttons show an honest "not connected to the server yet" toast instead of faking success
+
 ## [1.29.0] - 2026-07-31
 
 ### 🐛 Fixes

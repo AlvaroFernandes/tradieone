@@ -48,7 +48,7 @@ const navItems: NavItem[] = [
   { to: '/reports', icon: BarChart3, label: 'Reports' },
 ]
 
-const IMPLEMENTED_ROUTES = new Set(['/dashboard', '/clients'])
+const IMPLEMENTED_ROUTES = new Set(['/dashboard', '/clients', '/jobs'])
 
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUIStore()
