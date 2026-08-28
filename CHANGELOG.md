@@ -3,6 +3,13 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.30.2] - 2026-08-28
+
+### 🐛 Fixes
+
+- Aligned the `POST /api/clients` payload in `use-create-client.ts` with the DB CHECK constraints on the `Client` table: `clientType` is now lowercased to `residential` / `commercial` (the constraint rejects the capitalised UI values), `state` is sent as `null` instead of an empty string (the constraint allows only the eight AU state codes or NULL — `''` fails it), and `country` is sent as the `AU` code to match the column default instead of the string `Australia`
+- Still pending backend confirmation: `paymentTerms` (UI sends display labels like `30 Days`; column default is the token `net_30`) and `status` (`active` default) mappings
+
 ## [1.30.1] - 2026-08-02
 
 ### 🔒 Security

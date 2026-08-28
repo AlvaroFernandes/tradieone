@@ -15,7 +15,8 @@ interface CreateClientPayload {
   addressLine1: string
   addressLine2: string
   suburb: string
-  state: string
+  // DB CHECK: NT/ACT/TAS/WA/SA/QLD/VIC/NSW or NULL — never an empty string.
+  state: string | null
   postcode: string
   country: string
   abn: string
@@ -35,16 +36,17 @@ function buildPayload(data: NewClientFormData, tenantId: string): CreateClientPa
   return {
     tenantId,
     clientName: data.clientName,
-    clientType: data.clientType,
+    // DB CHECK allows only lowercase 'residential' / 'commercial'.
+    clientType: data.clientType.toLowerCase(),
     avatarUrl: '',
     phone: data.phone || '',
     email: data.email || '',
     addressLine1: data.address || '',
     addressLine2: '',
     suburb: '',
-    state: '',
+    state: null,
     postcode: '',
-    country: 'Australia',
+    country: 'AU',
     abn: data.abn || '',
     paymentTerms: data.paymentTerms || '',
     isGSTRegistered: data.defaultGst === 'Tax Registered',
