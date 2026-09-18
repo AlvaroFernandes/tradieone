@@ -47,7 +47,8 @@ function buildPayload(data: NewClientFormData, tenantId: string): CreateClientPa
     state: null,
     postcode: '',
     country: 'AU',
-    abn: data.abn || '',
+    // DB CHECK rejects anything but digits — strip spaces/dashes people type when formatting an ABN.
+    abn: data.abn?.replace(/\D/g, '') || '',
     paymentTerms: data.paymentTerms || '',
     isGSTRegistered: data.defaultGst === 'Tax Registered',
     notes: data.notes || '',

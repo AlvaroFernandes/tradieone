@@ -35,7 +35,8 @@ function buildPayload(data: EditClientFormData): EditClientPayload {
     avatarUrl: '',
     status: data.status.toLowerCase(),
     isGSTRegistered: data.gstStatus === 'Tax Registered',
-    abn: data.abn || '',
+    // DB CHECK rejects anything but digits — strip spaces/dashes people type when formatting an ABN.
+    abn: data.abn?.replace(/\D/g, '') || '',
     paymentTerms: data.paymentTerms || '',
     notes: data.notes || '',
     addressLine1: data.address || '',
