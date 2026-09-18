@@ -6,6 +6,12 @@ export type ClientType = (typeof CLIENT_TYPES)[number]
 export const PAYMENT_TERMS = ['Due on Receipt', '7 Days', '14 Days', '30 Days'] as const
 export const GST_OPTIONS = ['Tax Registered', 'Not Registered'] as const
 
+// DB CHECK requires exactly 11 digits (the real AU ABN format) or an empty value.
+function isValidAbn(abn: string | undefined) {
+  if (!abn?.trim()) return true
+  return /^\d{11}$/.test(abn.replace(/\D/g, ''))
+}
+
 export const newClientSchema = z
   .object({
     clientName: z.string().min(1, 'Client name is required'),
@@ -24,6 +30,10 @@ export const newClientSchema = z
   })
   .refine((data) => data.clientType !== 'Commercial' || !!data.abn?.trim(), {
     message: 'ABN is required for commercial clients',
+    path: ['abn'],
+  })
+  .refine((data) => isValidAbn(data.abn), {
+    message: 'ABN must be 11 digits',
     path: ['abn'],
   })
 
@@ -88,6 +98,10 @@ export const editClientSchema = z
   })
   .refine((data) => data.clientType !== 'Commercial' || !!data.abn?.trim(), {
     message: 'ABN is required for commercial clients',
+    path: ['abn'],
+  })
+  .refine((data) => isValidAbn(data.abn), {
+    message: 'ABN must be 11 digits',
     path: ['abn'],
   })
 
