@@ -56,7 +56,7 @@ export function mapClientDtoToRow(dto: ClientDto): ClientRow {
     name,
     contactName: dto.contact?.trim() || name,
     contactEmail: dto.email?.trim() || '—',
-    type: dto.clientType === 'Residential' ? 'Residential' : ('Commercial' as ClientType),
+    type: dto.clientType?.toLowerCase() === 'residential' ? 'Residential' : ('Commercial' as ClientType),
     projects: dto.totalProjects,
     jobs: dto.totalJobs,
     outstanding,
@@ -64,7 +64,7 @@ export function mapClientDtoToRow(dto: ClientDto): ClientRow {
       outstanding > 0
         ? `${dto.totalOutstandingInvoices} invoice${dto.totalOutstandingInvoices === 1 ? '' : 's'}`
         : 'Up to date',
-    status: dto.status === 'Inactive' ? 'Inactive' : 'Active',
+    status: dto.status?.toLowerCase() === 'inactive' ? 'Inactive' : 'Active',
   }
 }
 

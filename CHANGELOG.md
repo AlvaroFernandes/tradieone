@@ -13,6 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - The Edit Client panel's Address field was seeding itself from the fully-formatted display address (`addressLine1 + suburb + state + postcode + country`) instead of the raw `addressLine1`, so saving without touching the address appended another `, AU` to it every time the panel was opened and saved. `ClientDetail` now carries `addressLine1` separately and the form defaults to that instead.
 - Confirmed via direct API testing that `GET /api/Clients` (the list endpoint every client screen reads from) returns a stale/empty `phone` for a client even right after a `PUT` that set it — `GET /api/Clients/{id}` returns the correct value, so the write succeeds but the list projection's `phone` field doesn't reflect it. This is a backend DTO bug, not a frontend issue; the edit form is sending the field correctly. Flagged for backend follow-up.
+- `mapClientDtoToRow` and `mapClientDtoToDetail` compared `dto.clientType`/`dto.status` against the capitalised UI values (`'Residential'`, `'Inactive'`) but the API always returns them lowercased (`'residential'`, `'inactive'`), so every client rendered as "Commercial" and "Active" everywhere in the app regardless of its real type/status — and, worse, opening Edit Client on a residential or inactive client and saving without touching those fields would silently flip them to commercial/active. Comparisons are now case-insensitive.
 
 ## [1.30.2] - 2026-08-28
 
