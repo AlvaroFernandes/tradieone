@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
   Archive,
@@ -22,9 +21,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth.store'
 import { useClientDetail } from '@/features/clients/hooks/use-client-detail'
-import type { ClientDto } from '@/features/clients/hooks/use-clients'
+import { useEditClient } from '@/features/clients/hooks/use-edit-client'
 import { ContactsTab, buildInitialContacts } from '@/features/clients/components/contacts-tab'
 import { EditClientModal } from '@/features/clients/components/edit-client-modal'
 import type { ClientDetail, ContactRow, EditClientFormData } from '@/types/client.types'
@@ -52,9 +50,8 @@ function notConnected(feature: string) {
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const tenantId = useAuthStore((s) => s.tenantId)
   const { data: client, isLoading, isError, error } = useClientDetail(id)
+  const editClient = useEditClient()
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const [contacts, setContacts] = useState<ContactRow[]>([])
   const [showEditModal, setShowEditModal] = useState(false)
@@ -65,31 +62,11 @@ export default function ClientDetailPage() {
   }, [client?.id])
 
   function handleSaveClient(data: EditClientFormData) {
-    queryClient.setQueryData<ClientDto[]>(['clients', tenantId], (old) =>
-      old?.map((dto) =>
-        String(dto.clientId) === id
-          ? {
-              ...dto,
-              name: data.clientName,
-              clientType: data.clientType,
-              status: data.status,
-              email: data.email?.trim() || null,
-              phone: data.phone?.trim() || null,
-              addressLine1: data.address?.trim() || null,
-              addressLine2: null,
-              suburb: null,
-              state: null,
-              postcode: null,
-              country: null,
-              abn: data.abn?.trim() || null,
-              paymentTerms: data.paymentTerms?.trim() || null,
-              notes: data.notes?.trim() || null,
-            }
-          : dto,
-      ),
+    if (!id) return
+    editClient.mutate(
+      { clientId: id, data },
+      { onSuccess: () => setShowEditModal(false) },
     )
-    setShowEditModal(false)
-    toast.success('Client updated locally — saving to the server isn’t connected yet.')
   }
 
   if (isLoading) {
@@ -179,6 +156,7 @@ export default function ClientDetailPage() {
           client={client}
           onClose={() => setShowEditModal(false)}
           onSave={handleSaveClient}
+          isSaving={editClient.isPending}
         />
       )}
     </div>

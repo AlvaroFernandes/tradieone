@@ -45,6 +45,7 @@ export function mapClientDtoToDetail(dto: ClientDto): ClientDetail {
     phone: dto.phone?.trim() || null,
     email: dto.email?.trim() || null,
     address: formatAddress(dto),
+    addressLine1: dto.addressLine1?.trim() || null,
     addressLines: formatAddressLines(dto),
     abn: dto.abn?.trim() || null,
     paymentTerms: dto.paymentTerms?.trim() || null,

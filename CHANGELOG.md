@@ -3,6 +3,17 @@
 All notable changes to TradieOne are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.31.0] - 2026-09-18
+
+### ✨ Features
+
+- Wired up the Edit Client panel to `PUT /api/Clients/{id}` via a new `use-edit-client.ts` hook (mirrors `use-create-client.ts`'s payload shape, confirmed against the live Swagger contract: `ClientPutModel`) — edits now actually save to the server instead of only patching the local React Query cache
+
+### 🐛 Fixes
+
+- The Edit Client panel's Address field was seeding itself from the fully-formatted display address (`addressLine1 + suburb + state + postcode + country`) instead of the raw `addressLine1`, so saving without touching the address appended another `, AU` to it every time the panel was opened and saved. `ClientDetail` now carries `addressLine1` separately and the form defaults to that instead.
+- Confirmed via direct API testing that `GET /api/Clients` (the list endpoint every client screen reads from) returns a stale/empty `phone` for a client even right after a `PUT` that set it — `GET /api/Clients/{id}` returns the correct value, so the write succeeds but the list projection's `phone` field doesn't reflect it. This is a backend DTO bug, not a frontend issue; the edit form is sending the field correctly. Flagged for backend follow-up.
+
 ## [1.30.2] - 2026-08-28
 
 ### 🐛 Fixes

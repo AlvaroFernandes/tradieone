@@ -17,9 +17,10 @@ interface EditClientModalProps {
   client: ClientDetail
   onClose: () => void
   onSave: (data: EditClientFormData) => void
+  isSaving?: boolean
 }
 
-export function EditClientModal({ client, onClose, onSave }: EditClientModalProps) {
+export function EditClientModal({ client, onClose, onSave, isSaving = false }: EditClientModalProps) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -32,7 +33,7 @@ export function EditClientModal({ client, onClose, onSave }: EditClientModalProp
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<EditClientFormData>({
     resolver: zodResolver(editClientSchema),
     defaultValues: {
@@ -41,7 +42,7 @@ export function EditClientModal({ client, onClose, onSave }: EditClientModalProp
       status: client.status,
       email: client.email ?? '',
       phone: client.phone ?? '',
-      address: client.address ?? '',
+      address: client.addressLine1 ?? '',
       abn: client.abn ?? '',
       paymentTerms: client.paymentTerms ?? PAYMENT_TERMS[2],
       gstStatus: GST_OPTIONS[0],
@@ -243,14 +244,14 @@ export function EditClientModal({ client, onClose, onSave }: EditClientModalProp
             <button
               type="submit"
               form="edit-client-form"
-              disabled={isSubmitting}
+              disabled={isSaving}
               className={cn(
                 'flex h-11 items-center gap-2 rounded-xl bg-[#0050cb] px-6 font-inter text-sm font-semibold text-white',
                 'transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60',
               )}
             >
               <Save className="h-4 w-4" />
-              Save Changes
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
           <p className="flex items-center justify-center gap-1.5 font-inter text-xs text-[#9ca3af]">
